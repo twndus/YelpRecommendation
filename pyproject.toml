@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "yelprecommendation"
+version = "0.1.0"
+description = ""
+authors = ["GangBean, twndus"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+torch = "2.2.2"
+torchaudio = "2.2.2"
+torchvision = "0.17.2"
+pandas = "^2.2.2"
+tqdm = "^4.66.2"
+pytest = "^8.1.1"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

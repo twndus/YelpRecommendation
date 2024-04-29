@@ -24,7 +24,7 @@ class YelpData:
                 if int(year) == target_year:
                     data.append(json_data)
         df: pd.DataFrame = pd.DataFrame(data)
-        df.to_csv(saved_dir)
+        df.to_csv(saved_dir, index=False)
         return df
     
     def _filtered(self, data: pd.DataFrame, threshold: int=5) -> pd.DataFrame:
@@ -48,3 +48,16 @@ class YelpData:
         count_per_item = count_per_item[count_per_item < threshold]
 
         return count_per_user, count_per_item
+    
+    def _encoded(self, data: pd.DataFrame) -> pd.DataFrame:
+        encoded: pd.DataFrame = data[['user_id', 'business_id', 'stars']]
+        
+        # encode user_id
+        user2idx = {value:idx for idx, value in enumerate(set(encoded['user_id']))}
+        encoded['user_id'] = encoded['user_id'].map(user2idx)
+
+        # encode business_id
+        business2idx = {value:idx for idx, value in enumerate(set(encoded['business_id']))}
+        encoded['business_id'] = encoded['business_id'].map(business2idx)
+
+        return encoded

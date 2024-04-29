@@ -11,6 +11,12 @@ def test_filter_YelpData():
 
 def test_encode_YelpData():
     yelp_2019 = YelpData()
-    encoded = yelp_2019._encoded(yelp_2019.data)
+    filtered = yelp_2019._filtered(yelp_2019.data)
+    encoded = yelp_2019._encoded(filtered)
+
     assert encoded['user_id'].dtype == 'int64'
     assert encoded['business_id'].dtype == 'int64'
+    assert encoded['user_id'].min() == 0
+    assert encoded['user_id'].max() == 19_935
+    assert encoded['business_id'].min() == 0
+    assert encoded['business_id'].max() == 14_586

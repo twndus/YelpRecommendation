@@ -31,7 +31,7 @@ class YelpPreprocessPipe:
         logger.info(f'필터링 후 데이터: {review_df.shape}')
 
         review_df = self._id_mapping(review_df)
-        review_df = review_df[['user_id', 'business_id', 'stars']]
+        review_df = review_df[['user_id', 'business_id', 'stars']].rename(columns={'stars':'rating'})
         self._save_interactions(review_df)
 
 #        user_df = self._read_yelp_json('user')
@@ -133,7 +133,7 @@ class YelpPreprocessPipe:
 
     def _save_interactions(self, interactions):
         logger.info(f"save interactions...")
-        interactions.to_csv(os.path.join(self.cfg.result_dir, 'yelp_interactions.csv'), index=False)
+        interactions.to_csv(os.path.join(self.cfg.result_dir, 'yelp_interactions.tsv'), index=False, sep='\t')
         logger.info(f"done...")
 
     def _save_entities2attributes(self, entities2attributes, entity_name):

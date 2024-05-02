@@ -1,4 +1,5 @@
 import numpy as np
+from math import log2
 
 from loguru import logger
 
@@ -70,7 +71,7 @@ def map_at_k(actual: np.ndarray, predicted: np.ndarray, k: int=20) -> float:
         user_predicted: np.ndarray = predicted[user_idx]
 
         ap_k: float = _average_precision_at_k(user_actual, user_predicted, k)
-        
+
         ap_k_sum += ap_k
 
     return ap_k_sum / num_users
@@ -88,10 +89,14 @@ def _average_precision_at_k(user_actual: np.ndarray, user_predicted: np.ndarray,
     
     return precision_sum / len(user_actual)
 
-def ndcg_ag_k(actual: np.ndarray, predicted: np.ndarray, k: int=20) -> float:
+def ndcg_at_k(actual: np.ndarray, predicted: np.ndarray, k: int=20) -> float:
     '''
     description: calculate mean ndcg@K of all users
-        NDCG@K = ( / K)
+        NDCG@K = DCG@K / IDCG@K
+        CG@K = (rel_1 + rel_2 + ... + rel_K)
+        DCG@K = (rel_1/log_2(2) + rel_2/log_2(3) + ... + rel_K/log_2(K+1))
+        IDCG@K = (rel_opt_1/log_2(2) + rel_opt_2/log_2(3) + ... + rel_opt_K/log_2(K+1)) 
+            where rel_opt is sorted(rel, reverse=True)
     input:
         actual.shape = (num_users, num_items)
         predicted.shape = (num_users, num_items)
@@ -102,4 +107,28 @@ def ndcg_ag_k(actual: np.ndarray, predicted: np.ndarray, k: int=20) -> float:
     ndcg_sum: float = .0
     num_users: int = len(actual)
 
+    for user_idx in range(num_users):
+        user_actual: np.ndarray = actual[user_idx]
+        user_predicted: np.ndarray = predicted[user_idx]
+        user_ndcg: float = _dcg_at_k(user_actual, user_predicted, k) / _idcg_at_k(k)
+
+        ndcg_sum += user_ndcg
+
     return ndcg_sum / num_users
+
+def _dcg_at_k(user_actual: np.ndarray, user_predicted: np.ndarray, k: int) -> float:
+    dcg_sum: float = .0
+
+    for i in range(1, k+1):
+        if user_actual[i-1] != user_predicted[i-1]: continue
+        dcg_sum += (1.0 / log2(i+1))
+
+    return dcg_sum
+
+def _idcg_at_k(k:int) -> float:
+    idcg_sum: float = .0
+
+    for i in range(1, k + 1):
+        idcg_sum += (1 / log2(i+1)) # ideal rel value is always 1
+    
+    return idcg_sum if idcg_sum > .0 else 1.0

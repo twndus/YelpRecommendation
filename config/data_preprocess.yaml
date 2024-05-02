@@ -1,0 +1,12 @@
+# to load yelp_academic_dataset_review, user, business
+data_dir: /home/leejuyeon/yelp 
+
+# to save processed data
+result_dir: data
+
+# to filter review data
+start_date: 2019.01.01
+end_date:   2019.12.31
+
+# minimum length of interactions for both users and businesses
+min_interactions: 5

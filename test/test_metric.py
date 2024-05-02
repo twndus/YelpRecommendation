@@ -1,6 +1,5 @@
 import numpy as np
 from math import isclose
-import math
 
 from ..metric import (
     precision_at_k, recall_at_k, map_at_k, ndcg_at_k

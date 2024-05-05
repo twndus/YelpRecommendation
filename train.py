@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from loguru import logger
 
-@hydra.main(version_base=None, config_path="../config", config_name="train_config")
+@hydra.main(version_base=None, config_path="../configs", config_name="train_config")
 def main(cfg: OmegaConf):
     logger.info(f"set seed as {cfg.seed}...")
     set_seed(cfg.seed)

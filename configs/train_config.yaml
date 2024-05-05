@@ -1,1 +1,25 @@
-shuffle: True
+# run config
+seed:       42 
+shuffle:    True
+model_dir:  outputs/models
+submit_dir: outputs/submissions
+data_dir:   outputs/datasets
+log_dir:    logs/
+
+# mlflow config
+exp:        True # True/ False
+project:    YelpRecommendation
+notes:      "..."
+
+# train config
+device:     cuda # cpu
+epochs:     10
+batch_size: 32
+lr:         0.001
+optimizer:  adamw
+patience:   5
+top_n:      10
+
+# model config
+model_name: CDAE
+emb_dim:    64

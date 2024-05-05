@@ -1,0 +1,24 @@
+# run config
+seed:       42
+model_dir:  outputs/models
+submit_dir: outputs/submissions
+data_dir:   outputs/datasets
+log_dir:    logs/
+
+# mlflow config
+mlflow:     True 					# True, False
+project:    yelp 
+notes:      "..."
+
+# train config 
+device:     cuda 					# cuda, cpu
+epochs:     10
+batch_size: 32
+lr:         0.001
+optimizer:  adamw
+patience:   5
+top_n:      10
+
+# model config
+model_name: CDAE 					# models:  
+emb_dim:    64

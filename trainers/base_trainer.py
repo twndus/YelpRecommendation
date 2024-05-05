@@ -6,20 +6,17 @@ from torch.utils.data import DataLoader
 from torch.nn import Module, BCELoss
 from torch.optim import Optimizer, Adam, AdamW
 
-from tqdm import tqdm
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
+from abc import ABC, abstractmethod
 
-from ..metric import (
-    precision_at_k, recall_at_k, map_at_k, ndcg_at_k
-)
 
-class BaseTrainer:
+class BaseTrainer(ABC):
     def __init__(self, args: DictConfig) -> None:
         self.args: DictConfig = args
         self.device: torch.device = self._device(self.args.device)
-        self.model: Module = self._model(self.args.model).to(self.device)
-        self.optimizer: Optimizer = self._optimizer(self.args.optimizer, self.model, self.args.lr)
+        self.model: Module = self._model(self.args.model_name).to(self.device)
+        self.optimizer: Optimizer = self._optimizer(self.args.optimizer, self.model_name, self.args.lr)
         self.loss: BCELoss = self._loss(self.args.loss)
 
     def _device(self, device_name: str) -> torch.device:
@@ -98,55 +95,16 @@ class BaseTrainer:
                     logger.info(f"[Trainer] ealry stopping...")
                     break
 
+    @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:
-        raise NotImplementedError("[ERROR] Trainer train method is not implemented...")
-        # logger.info(f"[Trainer] train...")
-        # self.model.train()
-
-        # total_loss: float = .0
-
-        # for i, data in enumerate(tqdm(train_dataloader)):
-        #     X: Tensor = data['X'].to(self.device)
-        #     y: Tensor = data['y'].to(self.device)
-        #     pred: Tensor = self.model(X)
-        #     batch_loss: Tensor = self.loss(pred, y) # loss.forward(input, target)
-
-        #     self.optimizer.zero_grad()
-        #     batch_loss.backward()
-        #     self.optimizer.step()
-
-        #     total_loss += batch_loss.item() # require item call...
-        
-        # return total_loss
+        pass
     
+    @abstractmethod
     def validate(self, valid_dataloader: DataLoader) -> tuple[float]:
-        raise NotImplementedError("[ERROR] Trainer validate method is not implemented...")
-        # self.model.eval()
+        pass
 
-        # valid_loss: float = .0
-        # valid_precision_at_k: float = .0
-        # valid_recall_at_k: float = .0
-        # valid_map_at_k: float = .0
-        # valid_ndcg_at_k: float = .0
-
-        # for _, data in enumerate(tqdm(valid_dataloader)):
-        #     X: Tensor = data['X'].to(self.device)
-        #     y: Tensor = data['y'].to(self.device)
-        #     pred: Tensor = self.model(X)
-        #     batch_loss: Tensor = self.loss(pred, y)
-
-        #     valid_loss += batch_loss.item()
-
-        # valid_loss /= len(valid_dataloader)
-
-        # valid_precision_at_k, valid_recall_at_k, valid_map_at_k, valid_ndcg_at_k = self.evaluate()
-
-        # return valid_loss, valid_precision_at_k, valid_recall_at_k, valid_map_at_k, valid_ndcg_at_k
-    
+    @abstractmethod
     def evaluate(self, k: int=20) -> tuple[float]:
-        raise NotImplementedError("[ERROR] Trainer evaluate method is not implemented...")
-
-    def inference(self):
         pass
 
     def load_best_model(self):

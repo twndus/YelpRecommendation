@@ -1,9 +1,9 @@
 import torch
 from torch.nn import Module
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
-class BaseModel(Module):
+class BaseModel(Module, ABC):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 

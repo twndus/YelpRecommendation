@@ -3,7 +3,7 @@ seed:       42
 shuffle:    True
 model_dir:  outputs/models
 submit_dir: outputs/submissions
-data_dir:   outputs/datasets
+data_dir:   data/
 log_dir:    logs/
 
 # mlflow config

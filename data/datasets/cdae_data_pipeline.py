@@ -26,6 +26,8 @@ class CDAEDataPipeline(DataPipeline):
             # train+valid+test mask
             user_id = int(row['user_id'])
             user_history = np.argwhere(row[1:]).reshape(-1)
+
+            # split positive samples
             np.random.shuffle(user_history)
             train_samples, test_samples = np.split(user_history, [int(0.8*len(user_history))])
             train_samples, valid_samples = np.split(train_samples, [int(0.9*len(train_samples))])
@@ -43,17 +45,16 @@ class CDAEDataPipeline(DataPipeline):
             train_valid_mask[np.union1d(train_samples, valid_samples)] = 1
 
             train_data[user_id] = {
-                'train_mask': train_mask,
-                'pos_samples': train_samples,
+                'input_mask': train_mask,
             }
 
             valid_data[user_id] = {
-                'valid_mask': valid_mask,
-                'pos_samples': np.union1d(train_samples, valid_samples),
+                'input_mask': train_mask,
+                'loss_mask': valid_mask,
             }
 
             test_data[user_id] = {
-                'test_mask': test_mask,
+                'input_mask': test_mask,
                 'train_valid_mask': train_valid_mask,
             }
         logger.info("done")

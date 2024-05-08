@@ -15,18 +15,18 @@ class CDAEDataset(Dataset):
         if self.mode == 'train':
             return {
                 'user_id': user_id,
-                'input_mask': self.data[user_id]['input_mask'],
+                'input_mask': self.data[user_id]['input_mask'].astype('float32'),
                 }
         elif self.mode == 'valid':
             return {
                 'user_id': user_id,
-                'input_mask': self.data[user_id]['input_mask'],
-                'loss_mask': self.data[user_id]['loss_mask'],
+                'input_mask': self.data[user_id]['input_mask'].astype('float32'),
+                'loss_mask': self.data[user_id]['loss_mask'].astype('float32'),
                 }
         else:
             return {
                 'user_id': user_id,
-                'input_mask': self.data[user_id]['input_mask'],
-                'train_valid_mask': self.data[user_id]['train_valid_mask']
+                'input_mask': self.data[user_id]['input_mask'].astype('float32'),
+                'train_valid_mask': self.data[user_id]['train_valid_mask'].astype('float32')
                 }
 

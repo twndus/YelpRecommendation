@@ -3,7 +3,7 @@ from omegaconf import OmegaConf
 
 from data.datasets.cdae_data_pipeline import CDAEDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
-from trainers.base_trainer import BaseTrainer
+from trainers.cdae_trainer import CDAETrainer
 from utils import set_seed
 
 import torch
@@ -36,9 +36,10 @@ def main(cfg: OmegaConf):
     valid_dataloader = DataLoader(valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)
 
-#    trainer = BaseTrainer(cfg)
-#    trainer.run(train_dataloader, valid_dataloader)
-#    trainer.evaluate(test_dataloader)
+    if cfg.model_name in ('CDAE', ):
+        trainer = CDAETrainer(cfg, len(df.columns)-1, len(train_dataset))
+        trainer.run(train_dataloader, valid_dataloader)
+#        trainer.evaluate(test_dataloader)
 
 if __name__ == '__main__':
     main()

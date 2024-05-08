@@ -30,7 +30,7 @@ class CDAEDataPipeline(DataPipeline):
             # split positive samples
             np.random.shuffle(user_history)
             train_samples, test_samples = np.split(user_history, [int(0.8*len(user_history))])
-            train_samples, valid_samples = np.split(train_samples, [int(0.9*len(train_samples))])
+            train_samples, valid_samples = np.split(train_samples, [int(0.75*len(train_samples))])
 
             train_mask = np.zeros_like(row[1:], dtype=np.int32)
             train_mask[train_samples] = 1

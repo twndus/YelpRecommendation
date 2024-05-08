@@ -12,14 +12,18 @@ project:    YelpRecommendation
 notes:      "..."
 
 # train config
-device:     cuda # cpu
+device:     cpu # cpu
 epochs:     10
 batch_size: 32
 lr:         0.001
 optimizer:  adamw
+loss:       bce 
 patience:   5
 top_n:      10
 
 # model config
 model_name: CDAE
-emb_dim:    64
+hidden_size:    64
+corruption_level: 0.6
+hidden_activation:  sigmoid
+output_activation:  sigmoid

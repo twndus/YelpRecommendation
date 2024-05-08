@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 
-from .models.base_model import BaseModel
+from models.base_model import BaseModel
+from loguru import logger
 
 class CDAE(BaseModel):
 

@@ -68,12 +68,12 @@ class BaseTrainer(ABC):
              valid_recall_at_k,
              valid_map_at_k,
              valid_ndcg_at_k) = self.validate(valid_dataloader)
-            logger.info(f'''[Trainer] epoch: {epoch} > train loss: {train_loss} / 
-                        valid loss: {valid_loss} / 
-                        precision@K : {valid_precision_at_k} / 
-                        Recall@K: {valid_recall_at_k} / 
-                        MAP@K: {valid_map_at_k} / 
-                        NDCG@K: {valid_ndcg_at_k}''')
+            logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
+                        valid loss: {valid_loss:.4f} / 
+                        precision@K : {valid_precision_at_k:.4f} / 
+                        Recall@K: {valid_recall_at_k:.4f} / 
+                        MAP@K: {valid_map_at_k:.4f} / 
+                        NDCG@K: {valid_ndcg_at_k:.4f}''')
             
             # update model
             if best_valid_loss > valid_loss:
@@ -94,7 +94,7 @@ class BaseTrainer(ABC):
                 if endurance > self.cfg.patience: 
                     logger.info(f"[Trainer] ealry stopping...")
                     break
-
+            
     @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:
         pass
@@ -104,10 +104,9 @@ class BaseTrainer(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, k: int=20) -> tuple[float]:
+    def evaluate(self, test_dataloader: DataLoader) -> None:
         pass
 
     def load_best_model(self):
         logger.info(f"[Trainer] Load best model...")
         self.model.load_state_dict(torch.load(f'{self.cfg.model_dir}/best_model.pt'))
-    

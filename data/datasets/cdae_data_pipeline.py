@@ -50,12 +50,12 @@ class CDAEDataPipeline(DataPipeline):
 
             valid_data[user_id] = {
                 'input_mask': train_mask,
-                'loss_mask': valid_mask,
+                'valid_mask': valid_mask,
             }
 
             test_data[user_id] = {
-                'input_mask': test_mask,
-                'train_valid_mask': train_valid_mask,
+                'input_mask': train_valid_mask,
+                'test_mask': test_mask,
             }
         logger.info("done")
         return train_data, valid_data, test_data

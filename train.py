@@ -39,7 +39,8 @@ def main(cfg: OmegaConf):
     if cfg.model_name in ('CDAE', ):
         trainer = CDAETrainer(cfg, len(df.columns)-1, len(train_dataset))
         trainer.run(train_dataloader, valid_dataloader)
-#        trainer.evaluate(test_dataloader)
+        trainer.load_best_model()
+        trainer.evaluate(test_dataloader)
 
 if __name__ == '__main__':
     main()

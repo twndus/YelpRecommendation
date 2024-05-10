@@ -3,7 +3,7 @@ seed:       42
 shuffle:    True
 model_dir:  outputs/models
 submit_dir: outputs/submissions
-data_dir:   outputs/datasets
+data_dir:   data/
 log_dir:    logs/
 
 # mlflow config
@@ -13,13 +13,19 @@ notes:      "..."
 
 # train config
 device:     cuda # cpu
-epochs:     10
+epochs:     5
 batch_size: 32
 lr:         0.001
 optimizer:  adamw
+loss_name:  bce 
 patience:   5
 top_n:      10
 
 # model config
 model_name: CDAE
-emb_dim:    64
+negative_sampling: True # False
+neg_times:  5   # this works only when negative_sampling == True, if value is 5, the number of negative samples will be 5 times the number of positive samples by users
+hidden_size:    64
+corruption_level: 0.6
+hidden_activation:  sigmoid
+output_activation:  sigmoid

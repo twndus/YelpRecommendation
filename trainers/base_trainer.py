@@ -1,6 +1,8 @@
-import torch
+import os
+
 import numpy as np
 
+import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.nn import Module, BCELoss
@@ -10,14 +12,11 @@ from loguru import logger
 from omegaconf.dictconfig import DictConfig
 from abc import ABC, abstractmethod
 
-
 class BaseTrainer(ABC):
-    def __init__(self, args: DictConfig) -> None:
-        self.args: DictConfig = args
-        self.device: torch.device = self._device(self.args.device)
-        self.model: Module = self._model(self.args.model_name).to(self.device)
-        self.optimizer: Optimizer = self._optimizer(self.args.optimizer, self.model_name, self.args.lr)
-        self.loss: BCELoss = self._loss(self.args.loss)
+    def __init__(self, cfg: DictConfig) -> None:
+        self.cfg: DictConfig = cfg
+        self.device: torch.device = self._device(self.cfg.device)
+        os.makedirs(self.cfg.model_dir, exist_ok=True)
 
     def _device(self, device_name: str) -> torch.device:
         if device_name.lower() in ('cpu', 'cuda',):
@@ -61,19 +60,19 @@ class BaseTrainer(ABC):
         endurance: int = 0
 
         # train
-        for epoch in range(self.args.epochs):
+        for epoch in range(self.cfg.epochs):
             train_loss: float = self.train(train_dataloader)
             (valid_loss,
              valid_precision_at_k,
              valid_recall_at_k,
              valid_map_at_k,
              valid_ndcg_at_k) = self.validate(valid_dataloader)
-            logger.info(f'''[Trainer] epoch: {epoch} > train loss: {train_loss} / 
-                        valid loss: {valid_loss} / 
-                        precision@K : {valid_precision_at_k} / 
-                        Recall@K: {valid_recall_at_k} / 
-                        MAP@K: {valid_map_at_k} / 
-                        NDCG@K: {valid_ndcg_at_k}''')
+            logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
+                        valid loss: {valid_loss:.4f} / 
+                        precision@K : {valid_precision_at_k:.4f} / 
+                        Recall@K: {valid_recall_at_k:.4f} / 
+                        MAP@K: {valid_map_at_k:.4f} / 
+                        NDCG@K: {valid_ndcg_at_k:.4f}''')
             
             # update model
             if best_valid_loss > valid_loss:
@@ -88,13 +87,13 @@ class BaseTrainer(ABC):
 
                 # TODO: add mlflow
 
-                torch.save(self.model.state_dict(), f'{self.best_model_dir}/best_model.pt')
+                torch.save(self.model.state_dict(), f'{self.cfg.model_dir}/best_model.pt')
             else:
                 endurance += 1
-                if endurance > self.args.patience: 
+                if endurance > self.cfg.patience: 
                     logger.info(f"[Trainer] ealry stopping...")
                     break
-
+            
     @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:
         pass
@@ -104,10 +103,9 @@ class BaseTrainer(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, k: int=20) -> tuple[float]:
+    def evaluate(self, test_dataloader: DataLoader) -> None:
         pass
 
     def load_best_model(self):
         logger.info(f"[Trainer] Load best model...")
-        self.model.load_state_dict(torch.load(f'{self.best_model_dir}/best_model.pt'))
-    
+        self.model.load_state_dict(torch.load(f'{self.cfg.model_dir}/best_model.pt'))

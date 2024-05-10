@@ -16,7 +16,6 @@ class BaseTrainer(ABC):
     def __init__(self, cfg: DictConfig) -> None:
         self.cfg: DictConfig = cfg
         self.device: torch.device = self._device(self.cfg.device)
-        self.loss: BCELoss = self._loss(self.cfg.loss)
         os.makedirs(self.cfg.model_dir, exist_ok=True)
 
     def _device(self, device_name: str) -> torch.device:

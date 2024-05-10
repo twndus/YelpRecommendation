@@ -25,8 +25,8 @@ def main(cfg: OmegaConf):
     train_data, valid_data, test_data = data_pipeline.split(df)
 
     if cfg.model_name in ('CDAE', ):
-        train_dataset = CDAEDataset(train_data, 'train')
-        valid_dataset = CDAEDataset(valid_data, 'valid')
+        train_dataset = CDAEDataset(train_data, 'train', neg_times=cfg.neg_times)
+        valid_dataset = CDAEDataset(valid_data, 'valid', neg_times=cfg.neg_times)
         test_dataset = CDAEDataset(test_data, 'test')
     else:
         raise ValueError()

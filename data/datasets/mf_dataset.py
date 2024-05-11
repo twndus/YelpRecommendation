@@ -22,28 +22,29 @@ class MFDataset(Dataset):
             neg_item = np.random.randint(self.num_items)
         return neg_item
     
-    def __getitem__(self, user_id):
-        input_mask = self.data[user_id]['input_mask'].astype('float32')
+    def __getitem__(self, index):
+        data = self.data.iloc[index,:]
+        logger.info(data)
         if self.mode == 'train':
-            pos_item = self.data[user_id]['business_id'].astype('float32')
-            user_pos_items = self.data[user_id]['pos_items']
+            pos_item = data['business_id'].astype('int64')
+            user_pos_items = data['pos_items']
             return {
-                'user_id': user_id,
-                'pos_item': input_item,
-                'neg_item': self._negative_sampling(input_item, user_positives)
+                'user_id': data['user_id'].astype('int64'),
+                'pos_item': pos_item,
+                'neg_item': self._negative_sampling(pos_item, user_pos_items)
                 }
         elif self.mode == 'valid':
-            pos_item = self.data[user_id]['business_id'].astype('float32')
-            user_pos_items = self.data[user_id]['pos_items']
+            pos_item = data['business_id'].astype('int64')
+            user_pos_items = data['pos_items']
             return {
-                'user_id': user_id,
-                'pos_item': input_item,
-                'neg_item': self._negative_sampling(input_item, user_positives)
+                'user_id': data['user_id'].astype('int64'),
+                'pos_item': pos_item,
+                'neg_item': self._negative_sampling(pos_item, user_pos_items)
                 }
         else:
-            user_pos_items = self.data[user_id]['pos_items'].astype('float32')
+            user_pos_items = data['pos_items'].astype('int64')
             return {
-                'user_id': user_id,
+                'user_id': self.data[index]['user_id'].astype('int64'),
                 'pos_items': pos_items,
                 }
 

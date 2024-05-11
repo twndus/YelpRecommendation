@@ -31,3 +31,4 @@ top_n:      10
 #output_activation:  sigmoid
 
 model_name: MF 
+embed_size: 64

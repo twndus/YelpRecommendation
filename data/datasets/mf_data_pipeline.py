@@ -33,13 +33,15 @@ class MFDataPipeline(DataPipeline):
             valid_df.append(user_valid_df)
             test_df.append(user_test_df)
 
-        train_df = pd.concat(train_df)
-        valid_df = pd.concat(valid_df)
-        test_df = pd.concat(test_df)
+        train_df = pd.concat(train_df).reset_index()
+        valid_df = pd.concat(valid_df).reset_index()
+        test_df = pd.concat(test_df).reset_index()
 
-        train_pos_df = train_df.groupby('user_id')['business_id'].agg(list)
-        train_valid_pos_df = pd.concat([train_df, valid_df], axis=0).groupby('user_id')['business_id'].agg(list)
-        test_pos_df = test_df.groupby('user_id')['business_id'].agg(list)
+        train_pos_df = train_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
+        train_valid_pos_df = pd.concat([train_df, valid_df], axis=0).groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
+        test_pos_df = test_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
+
+        logger.info(train_pos_df)
 
         train_data = pd.merge(train_df, train_pos_df, left_on='user_id', right_on='user_id', how='left')
         valid_data = pd.merge(valid_df, train_valid_pos_df, left_on='user_id', right_on='user_id', how='left')

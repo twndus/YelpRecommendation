@@ -6,6 +6,7 @@ from data.datasets.mf_data_pipeline import MFDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
 from trainers.cdae_trainer import CDAETrainer
+from trainers.mf_trainer import MFTrainer
 from utils import set_seed
 
 import torch
@@ -27,6 +28,7 @@ def main(cfg: OmegaConf):
 
     df = data_pipeline.preprocess()
     train_data, valid_data, test_data = data_pipeline.split(df)
+    logger.info(train_data)
 
     if cfg.model_name in ('CDAE', ):
         train_dataset = CDAEDataset(train_data, 'train', neg_times=cfg.neg_times)
@@ -49,6 +51,9 @@ def main(cfg: OmegaConf):
         trainer.run(train_dataloader, valid_dataloader)
         trainer.load_best_model()
         trainer.evaluate(test_dataloader)
+    elif cfg.model_name in ('MF', ):
+        trainer = MFTrainer(cfg, data_pipeline.num_items, data_pipeline.num_users)
+        trainer.run(train_dataloader, valid_dataloader)
 
 if __name__ == '__main__':
     main()

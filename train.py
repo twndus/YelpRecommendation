@@ -2,7 +2,9 @@ import hydra
 from omegaconf import OmegaConf
 
 from data.datasets.cdae_data_pipeline import CDAEDataPipeline
+from data.datasets.mf_data_pipeline import MFDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
+from data.datasets.mf_dataset import MFDataset
 from trainers.cdae_trainer import CDAETrainer
 from utils import set_seed
 
@@ -18,6 +20,8 @@ def main(cfg: OmegaConf):
     
     if cfg.model_name in ('CDAE', ):
         data_pipeline = CDAEDataPipeline(cfg)
+    elif cfg.model_name == 'MF':
+        data_pipeline = MFDataPipeline(cfg)
     else:
         raise ValueError()
 
@@ -28,6 +32,10 @@ def main(cfg: OmegaConf):
         train_dataset = CDAEDataset(train_data, 'train', neg_times=cfg.neg_times)
         valid_dataset = CDAEDataset(valid_data, 'valid', neg_times=cfg.neg_times)
         test_dataset = CDAEDataset(test_data, 'test')
+    elif cfg.model_name == 'MF':
+        train_dataset = MFDataset(train_data, 'train', num_items=data_pipeline.num_items)
+        valid_dataset = MFDataset(valid_data, 'valid', num_items=data_pipeline.num_items)
+        test_dataset = MFDataset(test_data, 'test')
     else:
         raise ValueError()
 

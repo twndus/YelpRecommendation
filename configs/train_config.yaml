@@ -17,15 +17,17 @@ epochs:     5
 batch_size: 32
 lr:         0.001
 optimizer:  adamw
-loss_name:  bce 
+loss_name:  bpr # pointwise # bce 
 patience:   5
 top_n:      10
 
 # model config
-model_name: CDAE
-negative_sampling: True # False
-neg_times:  5   # this works only when negative_sampling == True, if value is 5, the number of negative samples will be 5 times the number of positive samples by users
-hidden_size:    64
-corruption_level: 0.6
-hidden_activation:  sigmoid
-output_activation:  sigmoid
+#model_name: CDAE 
+#negative_sampling: True # False
+#neg_times:  5   # this works only when negative_sampling == True, if value is 5, the number of negative samples will be 5 times the number of positive samples by users
+#hidden_size:    64
+#corruption_level: 0.6
+#hidden_activation:  sigmoid
+#output_activation:  sigmoid
+
+model_name: MF 

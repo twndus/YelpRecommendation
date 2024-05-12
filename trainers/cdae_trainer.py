@@ -10,6 +10,7 @@ from loguru import logger
 from omegaconf.dictconfig import DictConfig
 
 from models.cdae import CDAE
+from utils import log_metric
 from .base_trainer import BaseTrainer
 from metric import *
 
@@ -63,8 +64,9 @@ class CDAETrainer(BaseTrainer):
              valid_recall_at_k,
              valid_map_at_k,
              valid_ndcg_at_k)
-
-    def evaluate(self, test_dataloader: DataLoader) -> None:
+    
+    @log_metric
+    def evaluate(self, test_dataloader: DataLoader) -> tuple[float]:
         self.model.eval()
         actual, predicted = [], []
         for data in tqdm(test_dataloader):
@@ -90,7 +92,12 @@ class CDAETrainer(BaseTrainer):
                         Recall@{self.cfg.top_n}: {test_recall_at_k:.4f} / 
                         MAP@{self.cfg.top_n}: {test_map_at_k:.4f} / 
                         NDCG@{self.cfg.top_n}: {test_ndcg_at_k:.4f}''')
-        
+
+        return (test_precision_at_k,
+                test_recall_at_k,
+                test_map_at_k,
+                test_ndcg_at_k)
+
     def _generate_target_and_top_k_recommendation(self, pred: Tensor, actual_mask, pred_mask) -> tuple[list]:
         actual, predicted = [], []
 

@@ -6,14 +6,30 @@ submit_dir: outputs/submissions
 data_dir:   data/
 log_dir:    logs/
 
-# mlflow config
-exp:        True # True/ False
+# wandb config
+wandb:      True # True/ False
 project:    YelpRecommendation
 notes:      "..."
+tags:       [test, yelp, cdae]
+# sweep:      True
+# sweep_cfg: 
+#   method:     random
+#   name:       sweep
+#   metric: 
+#     goal:     maximize
+#     name:     val_acc
+#   parameters: 
+#     batch_size: 
+#       values: [16, 32, 64]
+#     epochs: 
+#       values: [5, 10, 15]
+#     lr: 
+#       min:    0.0001
+#       max:    0.1
 
 # train config
-device:     cpu # cpu
-epochs:     10
+device:     cuda # cpu
+epochs:     1
 batch_size: 32
 lr:         0.001
 optimizer:  adamw

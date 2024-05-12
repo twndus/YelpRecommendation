@@ -1,7 +1,4 @@
 import os
-import pytz
-from datetime import datetime
-
 import wandb
 
 import torch
@@ -12,6 +9,8 @@ from torch.optim import Optimizer, Adam, AdamW
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
 from abc import ABC, abstractmethod
+
+from utils import log_metric
 
 class BaseTrainer(ABC):
     def __init__(self, cfg: DictConfig) -> None:
@@ -53,16 +52,6 @@ class BaseTrainer(ABC):
     def run(self, train_dataloader: DataLoader, valid_dataloader: DataLoader):
         logger.info(f"[Trainer] run...")
 
-        # wandb init
-        run_time: str = datetime.now().astimezone(pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
-        run_name: str = f'[{self.cfg.model_name}]{run_time}'
-        
-        wandb.init(
-            project="yelp",
-            name=run_name,
-            config=dict(self.cfg),
-        )
-
         best_valid_loss: float = 1e+6
         best_valid_precision_at_k: float = .0
         best_valid_recall_at_k: float = .0
@@ -86,14 +75,15 @@ class BaseTrainer(ABC):
                         MAP@K: {valid_map_at_k:.4f} / 
                         NDCG@K: {valid_ndcg_at_k:.4f}''')
             
-            wandb.log({
-                'train_loss': train_loss,
-                'valid_loss': valid_loss,
-                'valid_Precision@K': valid_precision_at_k,
-                'valid_Recall@K': valid_recall_at_k,
-                'valid_MAP@K': valid_map_at_k,
-                'valid_NDCG@K': valid_ndcg_at_k,
-            })
+            if self.cfg.wandb:
+                wandb.log({
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,
+                    'valid_Precision@K': valid_precision_at_k,
+                    'valid_Recall@K': valid_recall_at_k,
+                    'valid_MAP@K': valid_map_at_k,
+                    'valid_NDCG@K': valid_ndcg_at_k,
+                })
 
             # update model
             if best_valid_loss > valid_loss:
@@ -113,8 +103,6 @@ class BaseTrainer(ABC):
                     logger.info(f"[Trainer] ealry stopping...")
                     break
 
-        wandb.finish()
-            
     @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:
         pass
@@ -124,7 +112,7 @@ class BaseTrainer(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, test_dataloader: DataLoader) -> None:
+    def evaluate(self, test_dataloader: DataLoader) -> tuple[float]:
         pass
 
     def load_best_model(self):

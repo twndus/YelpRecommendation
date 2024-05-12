@@ -1,18 +1,38 @@
 import hydra
 from omegaconf import OmegaConf
 
-from data.datasets.cdae_data_pipeline import CDAEDataPipeline
-from data.datasets.cdae_dataset import CDAEDataset
-from trainers.cdae_trainer import CDAETrainer
-from utils import set_seed
+import pytz
+from datetime import datetime
 
+import wandb
 import torch
 from torch.utils.data import DataLoader
 
 from loguru import logger
 
+from data.datasets.cdae_data_pipeline import CDAEDataPipeline
+from data.datasets.cdae_dataset import CDAEDataset
+from trainers.cdae_trainer import CDAETrainer
+from utils import set_seed
+
+
 @hydra.main(version_base=None, config_path="configs", config_name="train_config")
 def main(cfg: OmegaConf):
+
+    # wandb init
+    if cfg.wandb:
+        logger.info("[wandb] init...")
+        run_time: str = datetime.now().astimezone(pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
+        run_name: str = f'[{cfg.model_name}]{run_time}'
+        
+        wandb.init(
+            project=cfg.project,
+            name=run_name,
+            config=dict(cfg),
+            notes=cfg.notes,
+            tags=cfg.tags,
+        )
+    
     logger.info(f"set seed as {cfg.seed}...")
     set_seed(cfg.seed)
     
@@ -31,7 +51,7 @@ def main(cfg: OmegaConf):
     else:
         raise ValueError()
 
-    # pos_samples 를 이용한 negative sample을 수행해줘야 함
+    # set dataloaders
     train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     valid_dataloader = DataLoader(valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)
@@ -41,6 +61,10 @@ def main(cfg: OmegaConf):
         trainer.run(train_dataloader, valid_dataloader)
         trainer.load_best_model()
         trainer.evaluate(test_dataloader)
+
+    if cfg.wandb:
+        logger.info("[wandb] finish...")
+        wandb.finish()
 
 if __name__ == '__main__':
     main()

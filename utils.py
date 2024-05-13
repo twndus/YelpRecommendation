@@ -12,7 +12,7 @@ from loguru import logger
 from functools import wraps
 
 def set_seed(seed: int):
-    logger.info("seed setting...")
+    logger.info(f"[utils] set seed as {seed}...")
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)

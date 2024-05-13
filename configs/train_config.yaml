@@ -13,13 +13,14 @@ notes:      "..."
 
 # train config
 device:     cuda # cpu
-epochs:     5
+epochs:     10
 batch_size: 32
 lr:         0.001
 optimizer:  adamw
 loss_name:  bpr # pointwise # bce 
 patience:   5
 top_n:      10
+weight_decay: 1e-5 
 
 # model config
 #model_name: CDAE 

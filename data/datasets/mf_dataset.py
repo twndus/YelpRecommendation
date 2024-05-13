@@ -24,7 +24,6 @@ class MFDataset(Dataset):
     
     def __getitem__(self, index):
         data = self.data.iloc[index,:]
-        logger.info(data)
         if self.mode == 'train':
             pos_item = data['business_id'].astype('int64')
             user_pos_items = data['pos_items']

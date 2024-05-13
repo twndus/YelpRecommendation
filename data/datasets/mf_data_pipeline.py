@@ -38,16 +38,16 @@ class MFDataPipeline(DataPipeline):
         test_df = pd.concat(test_df).reset_index()
 
         train_pos_df = train_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
+        valid_pos_df = valid_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
         train_valid_pos_df = pd.concat([train_df, valid_df], axis=0).groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
         test_pos_df = test_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
 
-        logger.info(train_pos_df)
-
         train_data = pd.merge(train_df, train_pos_df, left_on='user_id', right_on='user_id', how='left')
-        valid_data = pd.merge(valid_df, train_valid_pos_df, left_on='user_id', right_on='user_id', how='left')
-        test_data = pd.merge(test_df, test_pos_df, left_on='user_id', right_on='user_id', how='left')
+        valid_data = pd.merge(valid_df, valid_pos_df, left_on='user_id', right_on='user_id', how='left')
+        valid_eval_data = pd.merge(valid_pos_df, train_pos_df.rename(columns={'pos_items': 'mask_items'}), left_on='user_id', right_on='user_id', how='left')
+        test_eval_data = pd.merge(test_pos_df, train_valid_pos_df.rename(columns={'pos_items': 'mask_items'}), left_on='user_id', right_on='user_id', how='left')
         
-        return train_data, valid_data, test_data
+        return train_data, valid_data, valid_eval_data, test_eval_data
 
     def preprocess(self) -> pd.DataFrame:
         '''

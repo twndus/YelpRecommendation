@@ -32,11 +32,11 @@ class BaseTrainer(ABC):
             logger.error(f"Not implemented model: {model_name}")
             raise NotImplementedError(f"Not implemented model: {model_name}")
     
-    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float) -> Optimizer:
+    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float, weight_decay: float=0) -> Optimizer:
         if optimizer_name.lower() == 'adam':
-            return Adam(model.parameters(), lr=learning_rate)
+            return Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         elif optimizer_name.lower() == 'adamw':
-            return AdamW(model.parameters(), lr=learning_rate)
+            return AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         else:
             logger.error(f"Optimizer Not Exists: {optimizer_name}")
             raise NotImplementedError(f"Optimizer Not Exists: {optimizer_name}")

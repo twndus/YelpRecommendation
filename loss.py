@@ -24,4 +24,4 @@ class BPRLoss(nn.Module):
 
     def forward(self, positive_preds, negative_preds):
         difference = positive_preds - negative_preds
-        return -torch.log(self.sigmoid(difference)).mean()
+        return torch.mean(-torch.log(self.sigmoid(difference)))

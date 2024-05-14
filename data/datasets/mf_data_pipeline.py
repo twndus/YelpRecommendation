@@ -17,7 +17,7 @@ class MFDataPipeline(DataPipeline):
 
     def split(self, df):
         '''
-           train_data: ((user_id, item_id, rating), ...)
+           data: ((user_id, item_id, rating), ...)
         '''
         logger.info(f'start random user split...')
         train_df, valid_df, test_df = [], [], []
@@ -43,7 +43,7 @@ class MFDataPipeline(DataPipeline):
         test_pos_df = test_df.groupby('user_id').agg({'business_id': [('pos_items', list)]}).droplevel(0, 1)
 
         train_data = pd.merge(train_df, train_pos_df, left_on='user_id', right_on='user_id', how='left')
-        valid_data = pd.merge(valid_df, valid_pos_df, left_on='user_id', right_on='user_id', how='left')
+        valid_data = pd.merge(valid_df, train_valid_pos_df, left_on='user_id', right_on='user_id', how='left')
         valid_eval_data = pd.merge(valid_pos_df, train_pos_df.rename(columns={'pos_items': 'mask_items'}), left_on='user_id', right_on='user_id', how='left')
         test_eval_data = pd.merge(test_pos_df, train_valid_pos_df.rename(columns={'pos_items': 'mask_items'}), left_on='user_id', right_on='user_id', how='left')
         

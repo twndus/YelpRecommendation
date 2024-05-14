@@ -80,7 +80,7 @@ class MFTrainer(BaseTrainer):
         train_loss = 0
         for data in tqdm(train_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
-                data['neg_item'].to(self.device)
+                 data['neg_item'].to(self.device)
             pos_pred = self.model(user_id, pos_item)
             neg_pred = self.model(user_id, neg_item)
 
@@ -142,10 +142,10 @@ class MFTrainer(BaseTrainer):
 
         # mask to train items
         pred = pred.cpu().detach().numpy()
-        pred[mask_items] = 0
+        pred[mask_items] = -3.40282e+38 # finfo(float32)
 
         # find the largest topK item indexes by user
-        topn_index = np.argpartition(pred, -self.cfg.top_n)[ -self.cfg.top_n:]
+        topn_index = np.argpartition(pred, -self.cfg.top_n)[-self.cfg.top_n:]
         # take probs from predictions using above indexes
         topn_prob = np.take_along_axis(pred, topn_index, axis=0)
         # sort topK probs and find their indexes

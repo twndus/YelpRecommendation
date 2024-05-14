@@ -35,14 +35,15 @@ def main(cfg: OmegaConf):
         test_dataset = CDAEDataset(test_data, 'test')
     elif cfg.model_name == 'MF':
         train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
-        train_dataset = MFDataset(train_data, 'train', num_items=data_pipeline.num_items)
-        valid_dataset = MFDataset(valid_data, 'valid', num_items=data_pipeline.num_items)
+        train_dataset = MFDataset(train_data, num_items=data_pipeline.num_items)
+        valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
     else:
         raise ValueError()
 
     # pos_samples 를 이용한 negative sample을 수행해줘야 함
     train_dataloader = DataLoader(train_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     valid_dataloader = DataLoader(valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
+
     if cfg.model_name != 'MF': 
         test_dataloader = DataLoader(test_dataset, batch_size=cfg.batch_size)
 

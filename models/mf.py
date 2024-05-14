@@ -15,7 +15,7 @@ class MatrixFactorization(BaseModel):
     def _init_weights(self):
         for child in self.children():
             if isinstance(child, nn.Embedding):
-                nn.init.normal_(child.weight)
+                nn.init.xavier_uniform_(child.weight)
 
     def forward(self, user_id, item_id):
         user_emb = self.user_embedding(user_id)

@@ -20,8 +20,8 @@ class BPRLoss(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.sigmoid = nn.Sigmoid()
+        self.logsigmoid = nn.LogSigmoid()
 
     def forward(self, positive_preds, negative_preds):
         difference = positive_preds - negative_preds
-        return torch.mean(-torch.log(self.sigmoid(difference)))
+        return torch.mean(-self.logsigmoid(difference))

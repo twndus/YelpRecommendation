@@ -16,11 +16,11 @@ device:     cuda # cpu
 epochs:     10
 batch_size: 32
 lr:         0.001
-optimizer:  adamw
+optimizer:  sgd # adamw
 loss_name:  bpr # pointwise # bce 
 patience:   5
 top_n:      10
-weight_decay: 1e-5 
+weight_decay: 0 #1e-5 
 
 # model config
 #model_name: CDAE 

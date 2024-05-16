@@ -1,9 +1,7 @@
 import os
-
-import numpy as np
+import wandb
 
 import torch
-from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.nn import Module, BCELoss
 from torch.optim import Optimizer, Adam, AdamW, SGD
@@ -11,6 +9,8 @@ from torch.optim import Optimizer, Adam, AdamW, SGD
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
 from abc import ABC, abstractmethod
+
+from utils import log_metric
 
 class BaseTrainer(ABC):
     def __init__(self, cfg: DictConfig) -> None:
@@ -76,6 +76,16 @@ class BaseTrainer(ABC):
                         MAP@K: {valid_map_at_k:.4f} / 
                         NDCG@K: {valid_ndcg_at_k:.4f}''')
             
+            if self.cfg.wandb:
+                wandb.log({
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,
+                    'valid_Precision@K': valid_precision_at_k,
+                    'valid_Recall@K': valid_recall_at_k,
+                    'valid_MAP@K': valid_map_at_k,
+                    'valid_NDCG@K': valid_ndcg_at_k,
+                })
+
             # update model
             if best_valid_loss > valid_loss:
                 logger.info(f"[Trainer] update best model...")
@@ -87,15 +97,13 @@ class BaseTrainer(ABC):
                 best_epoch = epoch
                 endurance = 0
 
-                # TODO: add mlflow
-
                 torch.save(self.model.state_dict(), f'{self.cfg.model_dir}/best_model.pt')
             else:
                 endurance += 1
                 if endurance > self.cfg.patience: 
                     logger.info(f"[Trainer] ealry stopping...")
                     break
-            
+
     @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:
         pass
@@ -105,7 +113,7 @@ class BaseTrainer(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, test_dataloader: DataLoader) -> None:
+    def evaluate(self, test_dataloader: DataLoader) -> tuple[float]:
         pass
 
     def load_best_model(self):

@@ -18,10 +18,9 @@ class CDAEDataPipeline(DataPipeline):
         '''
         logger.info(f'start random user split...')
 
-        item_list = df.columns[1:].astype(int)
         train_data, valid_data, test_data = {}, {}, {}
 
-        for i, row in tqdm(df.iterrows(), total=df.shape[0]):
+        for _, row in tqdm(df.iterrows(), total=df.shape[0]):
 
             # train+valid+test mask
             user_id = int(row['user_id'])

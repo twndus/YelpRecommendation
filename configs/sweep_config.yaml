@@ -1,0 +1,16 @@
+# sweep config
+## MF
+sweep_count: 3
+method:     random
+name:       sweep
+metric: 
+  goal:     minimize
+  name:     valid_loss
+parameters: 
+  batch_size: 
+    values: [16, 32, 64]
+  epochs: 
+    values: [5, 10, 15]
+  lr: 
+    min:    0.0001
+    max:    0.1

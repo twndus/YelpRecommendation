@@ -1,36 +1,5 @@
-# run config
-seed:       42 
-shuffle:    True
-model_dir:  outputs/models
-submit_dir: outputs/submissions
-data_dir:   data/
-log_dir:    logs/
-
-# wandb config
-wandb:      True # True/ False
-project:    YelpRecommendation
-notes:      "..."
-tags:       [test, yelp, cdae]
-
-# train config
-device:     cuda # cpu
-epochs:     1
-batch_size: 32
-lr:         0.001
-optimizer:  adamw
-loss:       bce 
-patience:   5
-top_n:      10
-
-# model config
-model_name: CDAE
-hidden_size:    64
-corruption_level: 0.6
-hidden_activation:  sigmoid
-output_activation:  sigmoid
-
-
 # sweep config
+## MF
 sweep_count: 3
 method:     random
 name:       sweep

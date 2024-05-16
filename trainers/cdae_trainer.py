@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 import torch
+import torch.nn as nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
@@ -13,12 +14,24 @@ from models.cdae import CDAE
 from utils import log_metric
 from .base_trainer import BaseTrainer
 from metric import *
+from loss import NSBCELoss
 
 class CDAETrainer(BaseTrainer):
     def __init__(self, cfg: DictConfig, num_items: int, num_users: int) -> None:
         super().__init__(cfg)
         self.model = CDAE(self.cfg, num_items, num_users)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr)
+        self.loss = self._loss()
+
+    def _loss(self):
+        if self.cfg.loss_name.lower() == 'bce' and self.cfg.negative_sampling:
+            return NSBCELoss()
+        elif self.cfg.loss_name.lower() == 'bce' and not self.cfg.negative_sampling:
+            return nn.BCELoss()
+        else:
+            logger.error(f"Loss Not Exists: {loss_name} when negative_sampling == {self.cfg.negative_sampling}")
+            raise NotImplementedError(f"Loss Not Exists: {loss_name}")
+
 
     def train(self, train_dataloader: DataLoader) -> float:
         self.model.train()
@@ -28,7 +41,11 @@ class CDAETrainer(BaseTrainer):
             pred = self.model(user_id, input_mask)
 
             self.optimizer.zero_grad()
-            loss = self.loss(pred, input_mask)
+            if self.cfg.negative_sampling:
+                negative_mask = data['negative_mask'].to(self.device)
+                loss = self.loss(pred, input_mask, negative_mask)
+            else:
+                loss = self.loss(pred, input_mask)
             loss.backward()
             self.optimizer.step()
 
@@ -45,7 +62,12 @@ class CDAETrainer(BaseTrainer):
             valid_mask = data['valid_mask'].to(self.device)
             pred = self.model(user_id, input_mask)
 
-            loss = self.loss(pred, input_mask.add(valid_mask)) # train + valid 1
+            if self.cfg.negative_sampling:
+                negative_mask = data['negative_mask'].to(self.device)
+                loss = self.loss(pred, input_mask.add(valid_mask), negative_mask) # train + valid 1
+            else:
+                loss = self.loss(pred, input_mask.add(valid_mask))
+
             valid_loss += loss.item()
 
             batch_actual, batch_predicted = self._generate_target_and_top_k_recommendation(pred, valid_mask, input_mask)

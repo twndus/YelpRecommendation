@@ -4,7 +4,7 @@ import wandb
 import torch
 from torch.utils.data import DataLoader
 from torch.nn import Module, BCELoss
-from torch.optim import Optimizer, Adam, AdamW
+from torch.optim import Optimizer, Adam, AdamW, SGD
 
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
@@ -16,7 +16,6 @@ class BaseTrainer(ABC):
     def __init__(self, cfg: DictConfig) -> None:
         self.cfg: DictConfig = cfg
         self.device: torch.device = self._device(self.cfg.device)
-        self.loss: BCELoss = self._loss(self.cfg.loss)
         os.makedirs(self.cfg.model_dir, exist_ok=True)
 
     def _device(self, device_name: str) -> torch.device:
@@ -33,11 +32,13 @@ class BaseTrainer(ABC):
             logger.error(f"Not implemented model: {model_name}")
             raise NotImplementedError(f"Not implemented model: {model_name}")
     
-    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float) -> Optimizer:
+    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float, weight_decay: float=0) -> Optimizer:
         if optimizer_name.lower() == 'adam':
-            return Adam(model.parameters(), lr=learning_rate)
+            return Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         elif optimizer_name.lower() == 'adamw':
-            return AdamW(model.parameters(), lr=learning_rate)
+            return AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif optimizer_name.lower() == 'sgd':
+            return SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         else:
             logger.error(f"Optimizer Not Exists: {optimizer_name}")
             raise NotImplementedError(f"Optimizer Not Exists: {optimizer_name}")

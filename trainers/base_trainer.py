@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.nn import Module, BCELoss
-from torch.optim import Optimizer, Adam, AdamW
+from torch.optim import Optimizer, Adam, AdamW, SGD
 
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
@@ -32,11 +32,13 @@ class BaseTrainer(ABC):
             logger.error(f"Not implemented model: {model_name}")
             raise NotImplementedError(f"Not implemented model: {model_name}")
     
-    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float) -> Optimizer:
+    def _optimizer(self, optimizer_name: str, model: Module, learning_rate: float, weight_decay: float=0) -> Optimizer:
         if optimizer_name.lower() == 'adam':
-            return Adam(model.parameters(), lr=learning_rate)
+            return Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         elif optimizer_name.lower() == 'adamw':
-            return AdamW(model.parameters(), lr=learning_rate)
+            return AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        elif optimizer_name.lower() == 'sgd':
+            return SGD(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         else:
             logger.error(f"Optimizer Not Exists: {optimizer_name}")
             raise NotImplementedError(f"Optimizer Not Exists: {optimizer_name}")

@@ -11,10 +11,13 @@ from torch.utils.data import DataLoader
 from loguru import logger
 
 from data.datasets.cdae_data_pipeline import CDAEDataPipeline
+from data.datasets.dcn_dataset import DCNDataset
 from data.datasets.mf_data_pipeline import MFDataPipeline
+from data.datasets.dcn_data_pipeline import DCNDatapipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
 from trainers.cdae_trainer import CDAETrainer
+from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
 from utils import set_seed
 
@@ -67,7 +70,7 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
     train_dataloader = DataLoader(args.train_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     valid_dataloader = DataLoader(args.valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
 
-    if cfg.model_name != 'MF': 
+    if cfg.model_name not in ('MF', 'DCN',): 
         test_dataloader = DataLoader(args.test_dataset, batch_size=cfg.batch_size)
 
     if cfg.model_name in ('CDAE', ):
@@ -79,6 +82,11 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer = MFTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'])
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
         trainer.evaluate(args.test_eval_data, 'test')
+    elif cfg.model_name in ('DCN', ):
+        trainer = DCNTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'],
+                                args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+        trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
+        trainer.evaluate(args.test_eval_data, 'test')
 
 @hydra.main(version_base=None, config_path="configs", config_name="train_config")
 def main(cfg: OmegaConf):
@@ -86,12 +94,15 @@ def main(cfg: OmegaConf):
         data_pipeline = CDAEDataPipeline(cfg)
     elif cfg.model_name == 'MF':
         data_pipeline = MFDataPipeline(cfg)
+    elif cfg.model_name == 'DCN':
+        data_pipeline = DCNDatapipeline(cfg)
     else:
         raise ValueError()
 
     df = data_pipeline.preprocess()
 
     args = EasyDict()
+    args.update({'data_pipeline': data_pipeline})
 
     model_info = dict() # additional infos needed to create model object
     if cfg.model_name in ('CDAE', ):
@@ -105,6 +116,12 @@ def main(cfg: OmegaConf):
         train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
         train_dataset = MFDataset(train_data, num_items=data_pipeline.num_items)
         valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
+        args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
+        model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
+    elif cfg.model_name == 'DCN':
+        train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
+        train_dataset = DCNDataset(train_data, num_items=data_pipeline.num_items)
+        valid_dataset = DCNDataset(valid_data, num_items=data_pipeline.num_items)
         args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:

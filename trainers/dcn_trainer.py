@@ -82,18 +82,12 @@ class DCNTrainer(BaseTrainer):
         for data in tqdm(train_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                  data['neg_item'].to(self.device)
-            # pos_item_categories, pos_item_statecity, neg_item_categories, neg_item_statecity = \
-            #     data['pos_item_categories'].to(self.device), data['pos_item_statecity'].to(self.device), \
-            #     data['neg_item_categories'].to(self.device), data['neg_item_statecity'].to(self.device)
+
             pos_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['pos_item']]).to(self.device)
             pos_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['pos_item']]).to(self.device)
             neg_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['neg_item']]).to(self.device)
             neg_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['neg_item']]).to(self.device)
 
-            # logger.info(f"pos_categories: {torch.equal(pos_item_categories, torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['pos_item']]).to(self.device))}")
-            # logger.info(f"pos_statecity: {torch.equal(pos_item_statecity, torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['pos_item']]).to(self.device))}")
-            # logger.info(f"neg_categories: {torch.equal(neg_item_categories, torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['neg_item']]).to(self.device))}")
-            # logger.info(f"neg_statecity: {torch.equal(neg_item_statecity, torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['neg_item']]).to(self.device))}")
             pos_pred = self.model(user_id, pos_item, pos_item_categories, pos_item_statecity)
             neg_pred = self.model(user_id, neg_item, neg_item_categories, neg_item_statecity)
 
@@ -112,9 +106,6 @@ class DCNTrainer(BaseTrainer):
         for data in tqdm(valid_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                 data['neg_item'].to(self.device)
-            # pos_item_categories, pos_item_statecity, neg_item_categories, neg_item_statecity = \
-            #     data['pos_item_categories'].to(self.device), data['pos_item_statecity'].to(self.device), \
-            #     data['neg_item_categories'].to(self.device), data['neg_item_statecity'].to(self.device)
             pos_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['pos_item']]).to(self.device)
             pos_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['pos_item']]).to(self.device)
             neg_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['neg_item']]).to(self.device)
@@ -132,33 +123,32 @@ class DCNTrainer(BaseTrainer):
     def evaluate(self, eval_data: pd.DataFrame, mode='valid') -> tuple:
         self.model.eval()
         actual, predicted = [], []
-        logger.info(f"Before inference #0: {torch.cuda.memory_allocated(self.device)} allocated and {torch.cuda.memory_reserved(self.device)} reserved")
         item_input = torch.tensor([item_id for item_id in range(self.num_items)], dtype=torch.int32).to(self.device)
-        # item_categories = torch.tensor([self.item2attributes[item]['categories'] for item in range(self.num_items)], dtype=torch.int32).to(self.device)
-        # item_statecity = torch.tensor([self.item2attributes[item]['statecity'] for item in range(self.num_items)], dtype=torch.int32).to(self.device)
-        chunk_size = 32 # self.cfg.batch_size
-        # logger.info(f"Before inference #1: {torch.cuda.memory_allocated(self.device)} allocated and {torch.cuda.memory_reserved(self.device)} reserved")
-        torch.cuda.empty_cache()
-        # logger.info(f"Before inference #2: {torch.cuda.memory_allocated(self.device)} allocated and {torch.cuda.memory_reserved(self.device)} reserved")
-        for user_id, row in tqdm(eval_data[:10].iterrows(), total=eval_data.shape[0]):
+        chunk_size = self.cfg.batch_size
+
+        # for efficient learning
+        if mode == 'valid':
+            eval_data = eval_data[:1000]
+
+        for user_id, row in tqdm(eval_data.iterrows(), total=eval_data.shape[0]):
             pred = []
             for idx in range(0, eval_data.shape[0], chunk_size):
                 chunk_item_input = item_input[idx:idx+chunk_size]
-                chunk_item_categories = torch.tensor([self.item2attributes[item]['categories'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
-                chunk_item_statecity = torch.tensor([self.item2attributes[item]['statecity'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
-                # print(f"{chunk_size}, {chunk_item_input.size()}, {chunk_item_categories.size()}, {chunk_item_statecity.size()}")
-                # logger.info(f"{torch.cuda.memory_allocated(self.device)} allocated and {torch.cuda.memory_reserved(self.device)} reserved")
+                chunk_item_categories = torch.tensor([
+                    self.item2attributes[item]['categories'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
+                chunk_item_statecity = torch.tensor([
+                    self.item2attributes[item]['statecity'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
 
-                chunk_pred: Tensor = self.model(torch.tensor([user_id,]*len(chunk_item_input), dtype=torch.int32).to(self.device), chunk_item_input, chunk_item_categories, chunk_item_statecity)
+                chunk_pred: Tensor = self.model(
+                    torch.tensor([user_id,]*len(chunk_item_input), dtype=torch.int32).to(self.device), chunk_item_input, chunk_item_categories, chunk_item_statecity)
                 pred.extend(chunk_pred.detach().cpu().numpy())
 
-                # torch.cuda.empty_cache()
-            # pred = self.model(torch.tensor([user_id,]*self.num_items).to(self.device), item_input, item_categories, item_statecity)
             batch_predicted = \
                 self._generate_top_k_recommendation(np.array(pred).reshape(-1), row['mask_items'])
             actual.append(row['pos_items'])
             predicted.append(batch_predicted)
 
+        logger.info(f'0 users predicted: {predicted[0]} actual: {actual[0]}')
         test_precision_at_k = precision_at_k(actual, predicted, self.cfg.top_n)
         test_recall_at_k = recall_at_k(actual, predicted, self.cfg.top_n)
         test_map_at_k = map_at_k(actual, predicted, self.cfg.top_n)
@@ -178,8 +168,7 @@ class DCNTrainer(BaseTrainer):
     
     def _generate_top_k_recommendation(self, pred: np.ndarray, mask_items) -> tuple[list]:
         # mask to train items
-        # pred = pred.cpu().detach().numpy()
-        pred[mask_items] = -3.40282e+38 # finfo(float32)
+        pred[mask_items] = 0 # sigmoid
 
         # find the largest topK item indexes by user
         topn_index = np.argpartition(pred, -self.cfg.top_n)[-self.cfg.top_n:]

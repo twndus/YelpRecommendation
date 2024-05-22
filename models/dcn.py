@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from models.base_model import BaseModel
+from loguru import logger
 
 class DCN(BaseModel):
     def __init__(self, cfg, num_users, num_items, attributes_count: list):
@@ -21,7 +22,7 @@ class DCN(BaseModel):
     
     def _deep(self):
         deep = nn.Sequential()
-        for idx in range(len(self.hidden_dims)-1): # 
+        for idx in range(len(self.hidden_dims)-1): 
             deep.append(nn.Linear(self.hidden_dims[idx], self.hidden_dims[idx+1]))
             deep.append(nn.ReLU())
         return deep
@@ -34,10 +35,10 @@ class DCN(BaseModel):
     def _init_weights(self):
         for child in self.children():
             if isinstance(child, nn.Embedding):
-                nn.init.xavier_uniform_(child.weight)
+                nn.init.kaiming_normal_(child.weight)
             elif isinstance(child, nn.Linear):
-                nn.init.xavier_uniform_(child.weight)
-                nn.init.uniform_(child.bias)
+                nn.init.kaiming_normal_(child.weight)
+                nn.init.zeros_(child.bias)
 
     def forward(self, user_id, item_id, *attributes):
         user_emb = self.user_embedding(user_id)
@@ -54,7 +55,7 @@ class DCN(BaseModel):
         input_x = torch.cat([self.deep(input_x), self._forward_cross(input_x)], dim=1)
 
         return torch.sigmoid(self.output_layer(input_x))
-    
+
     def _forward_cross(self, x):
         prev_x = x
         for weight, bias in zip(self.cross_weights, self.cross_bias):

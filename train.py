@@ -81,11 +81,13 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
     elif cfg.model_name in ('MF', ):
         trainer = MFTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'])
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
+        trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
     elif cfg.model_name in ('DCN', ):
         trainer = DCNTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'],
                                 args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
+        trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
 
 @hydra.main(version_base=None, config_path="configs", config_name="train_config")

@@ -54,6 +54,17 @@ class MFTrainer(BaseTrainer):
                         MAP@K: {valid_map_at_k:.4f} / 
                         NDCG@K: {valid_ndcg_at_k:.4f}''')
             
+            # wandb logging 
+            if self.cfg.wandb:
+                wandb.log({
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,
+                    'valid_Precision@K': valid_precision_at_k,
+                    'valid_Recall@K': valid_recall_at_k,
+                    'valid_MAP@K': valid_map_at_k,
+                    'valid_NDCG@K': valid_ndcg_at_k,
+                })
+
             # update model
             if best_valid_loss > valid_loss:
                 logger.info(f"[Trainer] update best model...")
@@ -64,8 +75,6 @@ class MFTrainer(BaseTrainer):
                 best_valid_map_at_k = valid_map_at_k
                 best_epoch = epoch
                 endurance = 0
-
-                # TODO: add mlflow
 
                 torch.save(self.model.state_dict(), f'{self.cfg.model_dir}/best_model.pt')
             else:

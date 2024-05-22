@@ -132,7 +132,7 @@ class DCNTrainer(BaseTrainer):
 
         for user_id, row in tqdm(eval_data.iterrows(), total=eval_data.shape[0]):
             pred = []
-            for idx in range(0, eval_data.shape[0], chunk_size):
+            for idx in range(0, self.num_items, chunk_size):
                 chunk_item_input = item_input[idx:idx+chunk_size]
                 chunk_item_categories = torch.tensor([
                     self.item2attributes[item]['categories'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)

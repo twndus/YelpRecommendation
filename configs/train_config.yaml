@@ -5,33 +5,39 @@ model_dir:  outputs/models
 submit_dir: outputs/submissions
 data_dir:   data/
 log_dir:    logs/
-sweep:      True 
+sweep:      False
 
 # wandb config
-wandb:      True # True/ False
+wandb:      False # True/ False
 project:    YelpRecommendation
 notes:      "..."
-tags:       [test, yelp, cdae]
+tags:       [sweep, yelp, cdae, hyper-parameter, model-structure]
 
 # train config
 device:     cuda # cpu
-epochs:     10
+epochs:     100
 batch_size: 32
-lr:         0.001
+lr:         0.0001
 optimizer:  adam # adamw
 loss_name:  bce # bpr # pointwise # bce 
 patience:   5
 top_n:      10
 weight_decay: 0 #1e-5 
+best_metric: loss # loss, precision, recall, map, ndcg
 
 # model config
-model_name: CDAE 
-negative_sampling: True # False
-neg_times:  5   # this works only when negative_sampling == True, if value is 5, the number of negative samples will be 5 times the number of positive samples by users
-hidden_size:    64
-corruption_level: 0.6
-hidden_activation:  sigmoid
-output_activation:  sigmoid
-
-#model_name: MF 
-#embed_size: 64
+model_name: CDAE
+model:
+  CDAE:
+    negative_sampling: True # False
+    neg_times:  5   # this works only when negative_sampling == True, if value is 5, the number of negative samples will be 5 times the number of positive samples by users
+    hidden_size:    64
+    corruption_level: 0.6
+    hidden_activation:  sigmoid
+    output_activation:  sigmoid
+  MF:
+    embed_size: 64
+  DCN:
+    hidden_dims: [1024, 1024]
+    cross_orders: 1 #6
+    embed_size: 64

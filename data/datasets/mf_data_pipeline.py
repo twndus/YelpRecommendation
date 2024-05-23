@@ -24,11 +24,13 @@ class MFDataPipeline(DataPipeline):
 
         for _, user_df in df.groupby('user_id'):
             if self.cfg.loss_name == 'pointwise':
-                user_train_df, user_test_df = train_test_split(user_df, test_size=.2, stratify=user_df['rating'])
-                user_train_df, user_valid_df = train_test_split(user_train_df, test_size=.25, stratify=user_train_df['rating'])
+                user_train_df, user_test_df = train_test_split(
+                    user_df, test_size=.2, random_state=self.cfg.seed, stratify=user_df['rating'])
+                user_train_df, user_valid_df = train_test_split(
+                    user_train_df, test_size=.25, random_state=self.cfg.seed, stratify=user_train_df['rating'])
             else:
-                user_train_df, user_test_df = train_test_split(user_df, test_size=.2)
-                user_train_df, user_valid_df = train_test_split(user_train_df, test_size=.25)
+                user_train_df, user_test_df = train_test_split(user_df, test_size=.2, random_state=self.cfg.seed)
+                user_train_df, user_valid_df = train_test_split(user_train_df, test_size=.25, random_state=self.cfg.seed)
             train_df.append(user_train_df)
             valid_df.append(user_valid_df)
             test_df.append(user_test_df)

@@ -29,8 +29,8 @@ class CDAETrainer(BaseTrainer):
         elif self.cfg.loss_name.lower() == 'bce' and not self.cfg.negative_sampling:
             return nn.BCELoss()
         else:
-            logger.error(f"Loss Not Exists: {loss_name} when negative_sampling == {self.cfg.negative_sampling}")
-            raise NotImplementedError(f"Loss Not Exists: {loss_name}")
+            logger.error(f"Loss Not Exists: {self.cfg.loss_name} when negative_sampling == {self.cfg.negative_sampling}")
+            raise NotImplementedError(f"Loss Not Exists: {self.cfg.loss_name}")
 
 
     def train(self, train_dataloader: DataLoader) -> float:

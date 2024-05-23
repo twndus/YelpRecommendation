@@ -14,20 +14,21 @@ from loguru import logger
 from omegaconf.dictconfig import DictConfig
 import wandb
 
-from models.mf import MatrixFactorization
+from models.dcn import DCN
 from .base_trainer import BaseTrainer
 from metric import *
 from loss import BPRLoss
 
-class MFTrainer(BaseTrainer):
-    def __init__(self, cfg: DictConfig, num_items: int, num_users: int) -> None:
+class DCNTrainer(BaseTrainer):
+    def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes: dict, attributes_count: list) -> None:
         super().__init__(cfg)
         self.num_items = num_items
         self.num_users = num_users
-        self.model = MatrixFactorization(self.cfg, num_users, num_items).to(self.device)
+        self.model = DCN(self.cfg, num_users, num_items, attributes_count).to(self.device)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr, self.cfg.weight_decay)
         self.loss = self._loss()
-
+        self.item2attributes = item2attributes
+    
     def _loss(self):
         return BPRLoss()
     
@@ -51,7 +52,7 @@ class MFTrainer(BaseTrainer):
              valid_map_at_k,
              valid_ndcg_at_k) = self.evaluate(valid_eval_data, 'valid')
             logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
-                        valid loss: {valid_loss:.4f} / 
+                        valid loss: {valid_loss:.4f} /
                         precision@K : {valid_precision_at_k:.4f} / 
                         Recall@K: {valid_recall_at_k:.4f} / 
                         MAP@K: {valid_map_at_k:.4f} / 
@@ -103,8 +104,14 @@ class MFTrainer(BaseTrainer):
         for data in tqdm(train_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                  data['neg_item'].to(self.device)
-            pos_pred = self.model(user_id, pos_item)
-            neg_pred = self.model(user_id, neg_item)
+
+            pos_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['pos_item']]).to(self.device)
+            pos_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['pos_item']]).to(self.device)
+            neg_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['neg_item']]).to(self.device)
+            neg_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['neg_item']]).to(self.device)
+
+            pos_pred = self.model(user_id, pos_item, pos_item_categories, pos_item_statecity)
+            neg_pred = self.model(user_id, neg_item, neg_item_categories, neg_item_statecity)
 
             self.optimizer.zero_grad()
             loss = self.loss(pos_pred, neg_pred)
@@ -118,12 +125,16 @@ class MFTrainer(BaseTrainer):
     def validate(self, valid_dataloader: DataLoader) -> tuple[float]:
         self.model.eval()
         valid_loss = 0
-        actual, predicted = [], []
         for data in tqdm(valid_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                 data['neg_item'].to(self.device)
-            pos_pred = self.model(user_id, pos_item)
-            neg_pred = self.model(user_id, neg_item)
+            pos_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['pos_item']]).to(self.device)
+            pos_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['pos_item']]).to(self.device)
+            neg_item_categories = torch.tensor([self.item2attributes[item.item()]['categories'] for item in data['neg_item']]).to(self.device)
+            neg_item_statecity = torch.tensor([self.item2attributes[item.item()]['statecity'] for item in data['neg_item']]).to(self.device)
+
+            pos_pred = self.model(user_id, pos_item, pos_item_categories, pos_item_statecity)
+            neg_pred = self.model(user_id, neg_item, neg_item_categories, neg_item_statecity)
 
             loss = self.loss(pos_pred, neg_pred)
 
@@ -132,14 +143,30 @@ class MFTrainer(BaseTrainer):
         return valid_loss
 
     def evaluate(self, eval_data: pd.DataFrame, mode='valid') -> tuple:
-
         self.model.eval()
         actual, predicted = [], []
-        item_input = torch.tensor([item_id for item_id in range(self.num_items)]).to(self.device)
+        item_input = torch.tensor([item_id for item_id in range(self.num_items)], dtype=torch.int32).to(self.device)
+        chunk_size = self.cfg.batch_size
+
+        # for efficient learning
+        if mode == 'valid':
+            eval_data = eval_data[:1000]
+
         for user_id, row in tqdm(eval_data.iterrows(), total=eval_data.shape[0]):
-            pred = self.model(torch.tensor([user_id,]*self.num_items).to(self.device), item_input)
+            pred = []
+            for idx in range(0, self.num_items, chunk_size):
+                chunk_item_input = item_input[idx:idx+chunk_size]
+                chunk_item_categories = torch.tensor([
+                    self.item2attributes[item]['categories'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
+                chunk_item_statecity = torch.tensor([
+                    self.item2attributes[item]['statecity'] for item in range(idx, min(self.num_items, idx+chunk_size))], dtype=torch.int32).to(self.device)
+
+                chunk_pred: Tensor = self.model(
+                    torch.tensor([user_id,]*len(chunk_item_input), dtype=torch.int32).to(self.device), chunk_item_input, chunk_item_categories, chunk_item_statecity)
+                pred.extend(chunk_pred.detach().cpu().numpy())
+
             batch_predicted = \
-                self._generate_top_k_recommendation(pred, row['mask_items'])
+                self._generate_top_k_recommendation(np.array(pred).reshape(-1), row['mask_items'])
             actual.append(row['pos_items'])
             predicted.append(batch_predicted)
 
@@ -159,12 +186,10 @@ class MFTrainer(BaseTrainer):
              test_recall_at_k,
              test_map_at_k,
              test_ndcg_at_k)
-        
-    def _generate_top_k_recommendation(self, pred: Tensor, mask_items) -> tuple[list]:
-
+    
+    def _generate_top_k_recommendation(self, pred: np.ndarray, mask_items) -> tuple[list]:
         # mask to train items
-        pred = pred.cpu().detach().numpy()
-        pred[mask_items] = -3.40282e+38 # finfo(float32)
+        pred[mask_items] = 0 # sigmoid
 
         # find the largest topK item indexes by user
         topn_index = np.argpartition(pred, -self.cfg.top_n)[-self.cfg.top_n:]

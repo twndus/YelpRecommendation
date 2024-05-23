@@ -182,6 +182,15 @@ class DCNTrainer(BaseTrainer):
                             MAP@{self.cfg.top_n}: {test_map_at_k:.4f} / 
                             NDCG@{self.cfg.top_n}: {test_ndcg_at_k:.4f}''')
 
+            if wandb.run is not None: # validate wandb initialization
+                logger.info("[Trainer] logging test results...")
+                wandb.log({
+                    'test_Precision@K': test_precision_at_k,
+                    'test_Recall@K': test_recall_at_k,
+                    'test_MAP@K': test_map_at_k,
+                    'test_NDCG@K': test_ndcg_at_k,
+                })
+
         return (test_precision_at_k,
              test_recall_at_k,
              test_map_at_k,

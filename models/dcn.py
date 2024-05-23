@@ -7,13 +7,16 @@ from loguru import logger
 class DCN(BaseModel):
     def __init__(self, cfg, num_users, num_items, attributes_count: list):
         super().__init__()
-        self.user_embedding = nn.Embedding(num_users, cfg.embed_size, dtype=torch.float32) 
-        self.item_embedding = nn.Embedding(num_items, cfg.embed_size, dtype=torch.float32)
+        self._calculate_emb_size = lambda x: round(6 * (x ** 0.25))
+        self.user_embedding = nn.Embedding(num_users, self._calculate_emb_size(num_users), dtype=torch.float32) 
+        self.item_embedding = nn.Embedding(num_items, self._calculate_emb_size(num_items), dtype=torch.float32)
         self.attributes_embeddings = nn.ModuleList([
-            nn.Embedding(count+1, cfg.embed_size, dtype=torch.float32) for count in attributes_count
+            nn.Embedding(count+1, self._calculate_emb_size(count), dtype=torch.float32) for count in attributes_count
         ])
-        self.hidden_dims = [(2+len(attributes_count)) * cfg.embed_size] + cfg.hidden_dims
-        self.cross_dims = [(2+len(attributes_count)) * cfg.embed_size] * cfg.cross_orders
+        self.input_size = self._calculate_emb_size(num_users) + self._calculate_emb_size(num_items) +\
+                sum([self._calculate_emb_size(count) for count in attributes_count])
+        self.hidden_dims = [self.input_size] + cfg.hidden_dims
+        self.cross_dims = [self.input_size] * cfg.cross_orders
         self.deep = self._deep()
         self.cross_weights, self.cross_bias = self._cross()
         self.output_layer = nn.Linear(self.hidden_dims[-1] + self.cross_dims[-1], 1)

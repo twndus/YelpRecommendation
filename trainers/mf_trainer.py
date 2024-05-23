@@ -10,6 +10,7 @@ from torch.optim import Optimizer
 
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
+import wandb
 
 from models.mf import MatrixFactorization
 from .base_trainer import BaseTrainer

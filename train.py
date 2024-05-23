@@ -90,8 +90,23 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
 
+def unpack_model(cfg: OmegaConf) -> OmegaConf:
+    if cfg.model_name not in cfg.model:
+        raise ValueError(f"model '{cfg.model_name}' is not defined in train_config.yaml")
+    
+    logger.info(f"[CONFIG] Model '{cfg.model_name}' is set to train...")
+    model_cfg = cfg.model[cfg.model_name]
+    del cfg.model
+
+    merged = OmegaConf.create({})
+    merged.update(cfg)
+    merged.update(model_cfg)
+    return merged
+
 @hydra.main(version_base=None, config_path="configs", config_name="train_config")
 def main(cfg: OmegaConf):
+    cfg = unpack_model(cfg)
+    
     if cfg.model_name in ('CDAE', ):
         data_pipeline = CDAEDataPipeline(cfg)
     elif cfg.model_name == 'MF':

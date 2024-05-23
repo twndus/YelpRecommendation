@@ -5,13 +5,13 @@ model_dir:  outputs/models
 submit_dir: outputs/submissions
 data_dir:   data/
 log_dir:    logs/
-sweep:      False 
+sweep:      False
 
 # wandb config
 wandb:      True # True/ False
 project:    YelpRecommendation
 notes:      "..."
-tags:       [test, yelp, cdae]
+tags:       [sweep, yelp, cdae, hyper-parameter, model-structure]
 
 # train config
 device:     cuda # cpu
@@ -23,6 +23,7 @@ loss_name:  bpr # bpr # pointwise # bce
 patience:   5
 top_n:      10
 weight_decay: 0 #1e-5 
+best_metric: loss # loss, precision, recall, map, ndcg
 
 # model config
 # model_name: CDAE 

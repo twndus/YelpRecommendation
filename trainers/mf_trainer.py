@@ -67,11 +67,21 @@ class MFTrainer(BaseTrainer):
                 })
 
             # update model
-            if best_valid_loss > valid_loss:
+            if self._is_surpass_best_metric(
+                current=(valid_loss,
+                         valid_precision_at_k,
+                         valid_recall_at_k,
+                         valid_map_at_k,
+                         valid_ndcg_at_k),
+                best=(best_valid_loss,
+                      best_valid_precision_at_k,
+                      best_valid_recall_at_k,
+                      best_valid_map_at_k,
+                      best_valid_ndcg_at_k)):
                 logger.info(f"[Trainer] update best model...")
                 best_valid_loss = valid_loss
                 best_valid_precision_at_k = valid_precision_at_k
-                best_recall_k = valid_recall_at_k
+                best_valid_recall_at_k = valid_recall_at_k
                 best_valid_ndcg_at_k = valid_ndcg_at_k
                 best_valid_map_at_k = valid_map_at_k
                 best_epoch = epoch

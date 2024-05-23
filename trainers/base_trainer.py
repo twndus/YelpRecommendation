@@ -10,7 +10,6 @@ from loguru import logger
 from omegaconf.dictconfig import DictConfig
 from abc import ABC, abstractmethod
 
-from utils import log_metric
 
 class BaseTrainer(ABC):
     def __init__(self, cfg: DictConfig) -> None:
@@ -87,11 +86,22 @@ class BaseTrainer(ABC):
                 })
 
             # update model
-            if best_valid_loss > valid_loss:
+            if self._is_surpass_best_metric(
+                current=(valid_loss,
+                         valid_precision_at_k,
+                         valid_recall_at_k,
+                         valid_map_at_k,
+                         valid_ndcg_at_k),
+                best=(best_valid_loss,
+                      best_valid_precision_at_k,
+                      best_valid_recall_at_k,
+                      best_valid_map_at_k,
+                      best_valid_ndcg_at_k)):
+                
                 logger.info(f"[Trainer] update best model...")
                 best_valid_loss = valid_loss
                 best_valid_precision_at_k = valid_precision_at_k
-                best_recall_k = valid_recall_at_k
+                best_valid_recall_at_k = valid_recall_at_k
                 best_valid_ndcg_at_k = valid_ndcg_at_k
                 best_valid_map_at_k = valid_map_at_k
                 best_epoch = epoch
@@ -103,6 +113,32 @@ class BaseTrainer(ABC):
                 if endurance > self.cfg.patience: 
                     logger.info(f"[Trainer] ealry stopping...")
                     break
+
+    def _is_surpass_best_metric(self, **metric) -> bool:
+        (valid_loss,
+             valid_precision_at_k,
+             valid_recall_at_k,
+             valid_map_at_k,
+             valid_ndcg_at_k) = metric['current']
+        
+        (best_valid_loss,
+            best_valid_precision_at_k,
+            best_valid_recall_at_k,
+            best_valid_map_at_k,
+            best_valid_ndcg_at_k) = metric['best']
+        
+        if self.cfg.best_metric == 'loss':
+            return valid_loss < best_valid_loss
+        elif self.cfg.best_metric == 'precision':
+            return valid_precision_at_k > best_valid_precision_at_k
+        elif self.cfg.best_metric == 'recall':
+            return valid_recall_at_k > best_valid_recall_at_k
+        elif self.cfg.best_metric == 'map':
+            return valid_map_at_k > best_valid_map_at_k
+        elif self.cfg.best_metric == 'ndcg':
+            return valid_ndcg_at_k > best_valid_ndcg_at_k
+        else:
+            return False
 
     @abstractmethod
     def train(self, train_dataloader: DataLoader) -> float:

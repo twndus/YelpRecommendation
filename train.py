@@ -151,7 +151,7 @@ def main(cfg: OmegaConf):
     })
 
     if cfg.wandb and cfg.sweep:
-        sweep_cfg = OmegaConf.load('configs/sweep_config.yaml')
+        sweep_cfg = OmegaConf.load(f'configs/{cfg.model_name.lower()}_sweep_config.yaml')
         merge_cfg = OmegaConf.create({})
         merge_cfg.update(cfg)
         merge_cfg.update(sweep_cfg)

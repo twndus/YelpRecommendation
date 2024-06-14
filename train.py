@@ -14,6 +14,7 @@ from data.datasets.cdae_data_pipeline import CDAEDataPipeline
 from data.datasets.dcn_dataset import DCNDataset
 from data.datasets.mf_data_pipeline import MFDataPipeline
 from data.datasets.dcn_data_pipeline import DCNDatapipeline
+from data.datasets.ngcf_data_pipeline import NGCFDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
 from trainers.cdae_trainer import CDAETrainer
@@ -70,7 +71,7 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
     train_dataloader = DataLoader(args.train_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     valid_dataloader = DataLoader(args.valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
 
-    if cfg.model_name not in ('MF', 'DCN',): 
+    if cfg.model_name not in ('MF', 'DCN', 'NGCF'): 
         test_dataloader = DataLoader(args.test_dataset, batch_size=cfg.batch_size)
 
     if cfg.model_name in ('CDAE', ):
@@ -86,6 +87,12 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
     elif cfg.model_name in ('DCN', ):
         trainer = DCNTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'],
                                 args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+        trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
+        trainer.load_best_model()
+        trainer.evaluate(args.test_eval_data, 'test')
+    elif cfg.model_name in ('NGCF', ):
+        trainer = MGCFTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
+                                args.data_pipeline.laplacian_matrix)
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
         trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
@@ -113,6 +120,8 @@ def main(cfg: OmegaConf):
         data_pipeline = MFDataPipeline(cfg)
     elif cfg.model_name == 'DCN':
         data_pipeline = DCNDatapipeline(cfg)
+    elif cfg.model_name == 'NGCF':
+        data_pipeline = NGCFDataPipeline(cfg)
     else:
         raise ValueError()
 
@@ -139,6 +148,12 @@ def main(cfg: OmegaConf):
         train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
         train_dataset = DCNDataset(train_data, num_items=data_pipeline.num_items)
         valid_dataset = DCNDataset(valid_data, num_items=data_pipeline.num_items)
+        args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
+        model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
+    elif cfg.model_name == 'NGCF':
+        train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
+        train_dataset = MFDataset(train_data, num_items=data_pipeline.num_items)
+        valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
         args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:

@@ -40,6 +40,7 @@ class NGCFDataPipeline(MFDataPipeline):
         self.laplacian_matrix = torch.matmul(diagonal_degree_matrix, adjacency_matrix)
         adjacency_matrix = adjacency_matrix.cpu().detach()
         self.laplacian_matrix = torch.matmul(self.laplacian_matrix, diagonal_degree_matrix)
+        self.laplacian_matrix = self.laplacian_matrix.to(self.cfg.device)
         logger.info('done...')
 
     def preprocess(self) -> pd.DataFrame:

@@ -41,15 +41,15 @@ class NGCF(BaseModel):
         return torch.sum(user_embed * item_embed, dim=1)
 
     def embedding_propagation(self, last_embed: torch.Tensor, w1, w2):
-        identity_matrix = torch.eye(*self.laplacian_matrix.size()).to(self.cfg.device)
-        matrix = self.laplacian_matrix + identity_matrix
+        identity_matrix = torch.eye(*self.laplacian_matrix.size())
+        matrix = self.laplacian_matrix.to('cpu') + identity_matrix
 
         # split calcuclation GPU memory shortage
         chunk_size = 32
         embed_list = []
         for chunk_idx in range(0, self.num_users + self.num_items, chunk_size):
             matrix_concat = matrix[chunk_idx : (chunk_idx + chunk_size)]
-            term1 = torch.matmul(matrix_concat, last_embed)
+            term1 = torch.matmul(matrix_concat.to(self.cfg.device), last_embed)
             term1 = w1(term1)
 
             laplacian_concat = self.laplacian_matrix[chunk_idx : (chunk_idx + chunk_size)]

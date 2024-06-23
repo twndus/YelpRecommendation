@@ -25,9 +25,10 @@ class NGCFTrainer(BaseTrainer):
         logger.info(f'[DEVICE] device = {self.device}')
         self.num_items = num_items
         self.num_users = num_users
-        self.model = NGCF(self.cfg, num_users, num_items, laplacian_matrix).to(self.device)
+        self.model = NGCF(self.cfg, num_users, num_items).to(self.device)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr, self.cfg.weight_decay)
         self.loss = self._loss()
+        self.laplacian_matrix = laplacian_matrix
 
     def _loss(self):
         return BPRLoss()
@@ -104,8 +105,8 @@ class NGCFTrainer(BaseTrainer):
         for data in tqdm(train_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                  data['neg_item'].to(self.device)
-            pos_pred = self.model(user_id, pos_item)
-            neg_pred = self.model(user_id, neg_item)
+            pos_pred = self.model(user_id, pos_item, self.laplacian_matrix)
+            neg_pred = self.model(user_id, neg_item, self.laplacian_matrix)
 
             self.optimizer.zero_grad()
             loss = self.loss(pos_pred, neg_pred)

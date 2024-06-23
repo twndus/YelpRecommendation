@@ -38,10 +38,12 @@ class NGCFDataPipeline(MFDataPipeline):
         diagonal_degree_matrix = torch.tensor(diagonal_degree_matrix).float().to('cuda')
         adjacency_matrix = torch.tensor(adjacency_matrix).float().to('cuda')
         self.laplacian_matrix = torch.matmul(diagonal_degree_matrix, adjacency_matrix)
-        adjacency_matrix = adjacency_matrix.cpu().detach()
+        del adjacency_matrix
         self.laplacian_matrix = torch.matmul(self.laplacian_matrix, diagonal_degree_matrix)
-        self.laplacian_matrix = self.laplacian_matrix.to(self.cfg.device)
+        self.laplacian_matrix = self.laplacian_matrix.to('cpu')
         logger.info('done...')
+
+        del diagonal_degree_matrix
 
     def preprocess(self) -> pd.DataFrame:
         df = super().preprocess()

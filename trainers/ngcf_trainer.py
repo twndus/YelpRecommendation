@@ -105,8 +105,7 @@ class NGCFTrainer(BaseTrainer):
         for data in tqdm(train_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                  data['neg_item'].to(self.device)
-            pos_pred = self.model(user_id, pos_item, self.laplacian_matrix)
-            neg_pred = self.model(user_id, neg_item, self.laplacian_matrix)
+            pos_pred,neg_pred = self.model.bpr_forward(user_id, pos_item, neg_item, self.laplacian_matrix)
 
             self.optimizer.zero_grad()
             loss = self.loss(pos_pred, neg_pred)
@@ -124,8 +123,7 @@ class NGCFTrainer(BaseTrainer):
         for data in tqdm(valid_dataloader):
             user_id, pos_item, neg_item = data['user_id'].to(self.device), data['pos_item'].to(self.device), \
                 data['neg_item'].to(self.device)
-            pos_pred = self.model(user_id, pos_item)
-            neg_pred = self.model(user_id, neg_item)
+            pos_pred,neg_pred = self.model.bpr_forward(user_id, pos_item, neg_item, self.laplacian_matrix)
 
             loss = self.loss(pos_pred, neg_pred)
 
@@ -138,8 +136,12 @@ class NGCFTrainer(BaseTrainer):
         self.model.eval()
         actual, predicted = [], []
         item_input = torch.tensor([item_id for item_id in range(self.num_items)]).to(self.device)
-        for user_id, row in tqdm(eval_data.iterrows(), total=eval_data.shape[0]):
-            pred = self.model(torch.tensor([user_id,]*self.num_items).to(self.device), item_input)
+
+        for idx in tqdm(np.random.randint(eval_data.shape[0], size=100), total=100):
+            user_id = eval_data.iloc[[idx], :].index[0]
+            row = eval_data.iloc[idx, :]
+
+            pred = self.model(torch.tensor([user_id,]*self.num_items).to(self.device), item_input, self.laplacian_matrix)
             batch_predicted = \
                 self._generate_top_k_recommendation(pred, row['mask_items'])
             actual.append(row['pos_items'])

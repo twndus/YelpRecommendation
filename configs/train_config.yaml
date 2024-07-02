@@ -5,18 +5,19 @@ model_dir:  outputs/models
 submit_dir: outputs/submissions
 data_dir:   data/
 log_dir:    logs/
-sweep:      False
+sweep:      True
+auto_off:   True
 
 # wandb config
-wandb:      False # True/ False
+wandb:      True # True/ False
 project:    YelpRecommendation
 notes:      "..."
-tags:       [sweep, yelp, cdae, hyper-parameter, model-structure]
+tags:       [sweep, yelp, ngcf, hyper-parameter, model-structure]
 
 # train config
 device:     cuda # cpu
 epochs:     100
-batch_size: 32
+batch_size: 1024
 lr:         0.0001
 optimizer:  adam # adamw
 loss_name:  bpr # bpr # pointwise # bce 

@@ -1,0 +1,20 @@
+# NGCF
+sweep_count: 100
+method:     bayes # grid, random, bayes
+name:       ngcf_grid_sweep
+metric: 
+  goal:     maximize # minimize
+  name:     test_MAP@K # valid_loss
+parameters:
+  batch_size: ##########[COMMON]###############
+    values: [1024, 512, 256, 128, 64, 32]
+  lr:
+    values: [1e-1, 1e-3, 1e-4, 1e-5]
+  optimizer:
+    values: [adam, adamw]
+  weight_decay:
+    values: [1e-1, 1e-3, 1e-5]
+  embed_size: ###########[MODEL]###############
+    values: [32, 64, 128]
+  num_orders:
+    values: [1, 3, 5, 7]

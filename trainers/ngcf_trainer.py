@@ -130,8 +130,55 @@ class NGCFTrainer(BaseTrainer):
             valid_loss += loss.item()
 
         return valid_loss
-
+    
     def evaluate(self, eval_data: pd.DataFrame, mode='valid') -> tuple:
+        self.model.eval()
+        actual, predicted = [], []
+        batch_size = 64
+
+        for idx in tqdm(range(0, eval_data.shape[0], batch_size)):
+            user_id = [i for i in range(idx, min(idx+batch_size, self.num_users))]
+            item_input = torch.tensor([item_id for item_id in range(self.num_items)]*len(user_id)).to(self.device)
+            
+            batch_row = eval_data.iloc[user_id, :]
+            user_id = np.concatenate([[id,] * self.num_items for id in user_id], axis=-1)
+            user_input = torch.tensor(user_id).to(self.device)
+
+            batch_pred = self.model(user_input, item_input, self.laplacian_matrix)
+            
+            for i, row in batch_row.iterrows():
+                pred = batch_pred[i:i+self.num_items].cpu()
+                user_predicted = self._generate_top_k_recommendation(pred, row['mask_items'])
+
+                actual.append(row['pos_items'])
+                predicted.append(user_predicted)
+
+        test_precision_at_k = precision_at_k(actual, predicted, self.cfg.top_n)
+        test_recall_at_k = recall_at_k(actual, predicted, self.cfg.top_n)
+        test_map_at_k = map_at_k(actual, predicted, self.cfg.top_n)
+        test_ndcg_at_k = ndcg_at_k(actual, predicted, self.cfg.top_n)
+        
+        if mode == 'test': 
+            logger.info(f'''\n[Trainer] Test > 
+                            precision@{self.cfg.top_n} : {test_precision_at_k:.4f} / 
+                            Recall@{self.cfg.top_n}: {test_recall_at_k:.4f} / 
+                            MAP@{self.cfg.top_n}: {test_map_at_k:.4f} / 
+                            NDCG@{self.cfg.top_n}: {test_ndcg_at_k:.4f}''')
+            if wandb.run is not None: # validate wandb initialization
+                logger.info("[Trainer] logging test results...")
+                wandb.log({
+                    'test_Precision@K': test_precision_at_k,
+                    'test_Recall@K': test_recall_at_k,
+                    'test_MAP@K': test_map_at_k,
+                    'test_NDCG@K': test_ndcg_at_k,
+                })
+
+        return (test_precision_at_k,
+             test_recall_at_k,
+             test_map_at_k,
+             test_ndcg_at_k)
+
+    def _evaluate(self, eval_data: pd.DataFrame, mode='valid') -> tuple:
 
         self.model.eval()
         actual, predicted = [], []
@@ -141,7 +188,9 @@ class NGCFTrainer(BaseTrainer):
             user_id = eval_data.iloc[[idx], :].index[0]
             row = eval_data.iloc[idx, :]
 
-            pred = self.model(torch.tensor([user_id,]*self.num_items).to(self.device), item_input, self.laplacian_matrix)
+            user_input = torch.tensor([user_id,]*self.num_items).to(self.device)
+            pred = self.model(user_input, item_input, self.laplacian_matrix)
+
             batch_predicted = \
                 self._generate_top_k_recommendation(pred, row['mask_items'])
             actual.append(row['pos_items'])

@@ -1,3 +1,4 @@
+import os
 import hydra
 from omegaconf import OmegaConf
 
@@ -175,6 +176,9 @@ def main(cfg: OmegaConf):
         run_sweep(merge_cfg, args)
     else:
         run(cfg, args)
+
+    if cfg.auto_off:
+        os.system('sudo shutdown -h +1')
 
 if __name__ == '__main__':
     main()

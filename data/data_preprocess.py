@@ -30,7 +30,10 @@ class YelpPreprocessPipe:
         review_df = self._filter_by_min_interactions(review_df, self.cfg.min_interactions)
         logger.info(f'필터링 후 데이터: {review_df.shape}')
 
-        review_df = self._id_mapping(review_df)
+        review_df: pd.DataFrame = self._id_mapping(review_df)
+        # logger.info(f"review df dtypes: {review_df.dtypes}")
+        review_df = review_df.sort_values(['date'])
+        # logger.info(f"after order by: {review_df[review_df.user_id == review_df.iloc[0].user_id].head()}")
         review_df = review_df[['user_id', 'business_id', 'stars']].rename(columns={'stars':'rating'})
         self._save_interactions(review_df)
 
@@ -145,7 +148,7 @@ class YelpPreprocessPipe:
         
         logger.info(f"done...")
 
-@hydra.main(version_base=None, config_path="../config", config_name="data_preprocess")
+@hydra.main(version_base=None, config_path="../configs", config_name="data_preprocess")
 def main(cfg: OmegaConf):
     ypp = YelpPreprocessPipe(cfg)
     ypp.run()

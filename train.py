@@ -17,6 +17,7 @@ from data.datasets.dcn_data_pipeline import DCNDatapipeline
 from data.datasets.ngcf_data_pipeline import NGCFDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
+from data.datasets.s3rec_data_pipeline import S3RecDataPipeline
 from trainers.cdae_trainer import CDAETrainer
 from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
@@ -122,6 +123,8 @@ def main(cfg: OmegaConf):
         data_pipeline = DCNDatapipeline(cfg)
     elif cfg.model_name == 'NGCF':
         data_pipeline = NGCFDataPipeline(cfg)
+    elif cfg.model_name == 'S3Rec':
+        data_pipeline = S3RecDataPipeline(cfg)
     else:
         raise ValueError()
 

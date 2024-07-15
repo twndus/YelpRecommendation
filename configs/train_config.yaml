@@ -26,7 +26,7 @@ weight_decay: 0 #1e-5
 best_metric: loss # loss, precision, recall, map, ndcg
 
 # model config
-model_name: NGCF 
+model_name: S3Rec 
 model:
   CDAE:
     negative_sampling: True # False
@@ -44,3 +44,5 @@ model:
   NGCF:
     embed_size: 64
     num_orders: 3
+  S3Rec:
+    max_seq_len: 50

@@ -12,16 +12,16 @@ class S3RecDataPipeline(DataPipeline):
 
     def split(self, df: pd.DataFrame):
         # train X: [:-3] y: -3
-        train_df_X = df.behaviors.apply(lambda row: row[: -3]).rename({'behaviors': 'X'})
-        train_df_Y = df.behaviors.apply(lambda row: row[-3]).rename({'behaviors': 'y'})
+        train_df_X = df.behaviors.apply(lambda row: row[: -3]).rename('X')
+        train_df_Y = df.behaviors.apply(lambda row: row[-3]).rename('y')
 
         # valid X: [:-2] y: -2 
-        valid_df_X = df.behaviors.apply(lambda row: row[: -2]).rename({'behaviors': 'X'})
-        valid_df_Y = df.behaviors.apply(lambda row: row[-2]).rename({'behaviors': 'y'})
+        valid_df_X = df.behaviors.apply(lambda row: row[: -2]).rename('X')
+        valid_df_Y = df.behaviors.apply(lambda row: row[-2]).rename('y')
 
         # test X: [:-1] y: -1 
-        test_df_X = df.behaviors.apply(lambda row: row[: -1]).rename({'behaviors': 'X'})
-        test_df_Y = df.behaviors.apply(lambda row: row[-1]).rename({'behaviors': 'y'})
+        test_df_X = df.behaviors.apply(lambda row: row[: -1]).rename('X')
+        test_df_Y = df.behaviors.apply(lambda row: row[-1]).rename('y')
 
         # pre-padding for input sequence X
         train_df_X = self._adjust_seq_len(train_df_X)
@@ -38,8 +38,9 @@ class S3RecDataPipeline(DataPipeline):
             if len(row) > self.cfg.max_seq_len:
                 row = row[-self.cfg.max_seq_len:]
             elif len(row) < self.cfg.max_seq_len:
-                row = [0] * (self.cfg.max_seq_len - len(row)) + row
-            return row
+                row = [-1] * (self.cfg.max_seq_len - len(row)) + row
+            # item 0: pad, item starts from 1
+            return [e+1 for e in row]
         
         df = df.apply(_adjust_seq_len_by_user)
         return df

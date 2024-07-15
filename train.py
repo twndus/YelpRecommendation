@@ -159,6 +159,15 @@ def main(cfg: OmegaConf):
         valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
         args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
+    elif cfg.model_name == 'S3Rec':
+        train_data, valid_data, test_data = data_pipeline.split(df)
+        # logger.info(f"train: {train_data.loc[1]}")
+        # logger.info(f"valid: {valid_data.loc[1]}")
+        # logger.info(f"test: {test_data.loc[1]}")
+        # train_dataset = MFDataset(train_data, num_items=data_pipeline.num_items)
+        # valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
+        # args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
+        # model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:
         raise ValueError()
 

@@ -28,9 +28,9 @@ class S3RecDataPipeline(DataPipeline):
         valid_df_X = self._adjust_seq_len(valid_df_X)
         test_df_X = self._adjust_seq_len(test_df_X)
 
-        return pd.concat([train_df_X, train_df_Y], axis=1),\
-            pd.concat([valid_df_X, valid_df_Y], axis=1),\
-            pd.concat([test_df_X, test_df_Y], axis=1)
+        return pd.concat([df, train_df_X, train_df_Y], axis=1),\
+            pd.concat([df, valid_df_X, valid_df_Y], axis=1),\
+            pd.concat([df, test_df_X, test_df_Y], axis=1)
 
 
     def _adjust_seq_len(self, df):

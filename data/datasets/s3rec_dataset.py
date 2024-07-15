@@ -16,12 +16,12 @@ class S3RecDataset(Dataset):
     def __len__(self):
         return self.data.shape[0]
     
-    def _negative_sampling(self, pos_item):
+    def _negative_sampling(self, behaviors):
         sample_size = 1 if self.train else 99
         neg_items = []
         for _ in range(sample_size):
             neg_item = np.random.randint(1, self.num_items+1)
-            while (neg_item == pos_item) or (neg_item in neg_items):
+            while (neg_item in behaviors) or (neg_item in neg_items):
                 neg_item = np.random.randint(1, self.num_items+1)
             neg_items.append(neg_item)
         return neg_items
@@ -34,12 +34,12 @@ class S3RecDataset(Dataset):
                 'user_id': user_id,
                 'X': data['X'],
                 'pos_item': pos_item,
-                'neg_item': self._negative_sampling(pos_item)[0]
+                'neg_item': self._negative_sampling(data['behaviors'])[0]
                 }
         else:
             return {
                 'user_id': user_id,
                 'X': data['X'],
                 'pos_item': pos_item,
-                'neg_items': self._negative_sampling(pos_item)
+                'neg_items': self._negative_sampling(data['behaviors'])
                 }

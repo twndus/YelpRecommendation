@@ -9,6 +9,7 @@ from torch.optim import Optimizer
 
 from loguru import logger
 from omegaconf.dictconfig import DictConfig
+import wandb
 
 from models.cdae import CDAE
 from utils import log_metric
@@ -48,7 +49,7 @@ class CDAETrainer(BaseTrainer):
 
             # update model
             if self._is_surpass_best_metric(
-                current=(valid_loss,)
+                current=(valid_loss,),
                 best=(best_valid_loss,)):
                 
                 logger.info(f"[Trainer] update best model...")
@@ -82,7 +83,7 @@ class CDAETrainer(BaseTrainer):
     def validate(self, valid_dataloader: DataLoader) -> tuple[float]:
         self.model.eval()
         valid_loss = 0
-        actual, predicted = [], []
+        # actual, predicted = [], []
         for data in tqdm(valid_dataloader):
             X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
             pos_pred, neg_pred = self.model(X, pos_item, neg_item)
@@ -103,9 +104,9 @@ class CDAETrainer(BaseTrainer):
             scores = self.model.evaluate(X, pos_item, neg_items)
 
             batch_actual, batch_predicted = \
-                self._generate_target_and_top_k_recommendation(pred, test_mask, input_mask)
-            actual.append(batch_actual)
-            predicted.append(batch_predicted)
+                self._generate_target_and_top_k_recommendation(scores, pos_item)
+            actual.extend(batch_actual)
+            predicted.extend(batch_predicted)
 
         predicted = np.concatenate(predicted, axis=0)
 
@@ -125,16 +126,16 @@ class CDAETrainer(BaseTrainer):
                 test_map_at_k,
                 test_ndcg_at_k)
 
-    def _generate_target_and_top_k_recommendation(self, scores: Tensor, pos_item) -> tuple[list]:
-        actual = [pos_item,]
+    def _generate_target_and_top_k_recommendation(self, scores: Tensor, pos_item: Tensor) -> tuple[list]:
+        actual = pos_item.cpu().detach().numpy()
 
         # create item index information
         scores_idx = np.zeros_like(scores.cpu().detach().numpy())
-        scores_idx[0,:] = pos_item
+        scores_idx[:, 0] = pos_item
 
         # sort topK probs and find their indexes
         sorted_indices = np.argsort(-scores.cpu().detach().numpy(), axis=1)[:self.cfg.top_n]
         # apply sorted indexes to item indexes to get sorted topK item indexes by user
         predicted = np.take_along_axis(scores_idx, sorted_indices, axis=1)
     
-        return actual, predicted
+        return actual.reshape(pos_item.size(0),1).tolist(), predicted[:,:self.cfg.top_n]

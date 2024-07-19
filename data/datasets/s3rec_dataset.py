@@ -32,14 +32,14 @@ class S3RecDataset(Dataset):
         if self.train:
             return {
                 'user_id': user_id,
-                'X': data['X'],
+                'X': np.array(data['X'], dtype='int64'),
                 'pos_item': pos_item,
                 'neg_item': self._negative_sampling(data['behaviors'])[0]
                 }
         else:
             return {
                 'user_id': user_id,
-                'X': data['X'],
+                'X': np.array(data['X'], dtype='int64'),
                 'pos_item': pos_item,
                 'neg_items': self._negative_sampling(data['behaviors'])
                 }

@@ -74,9 +74,9 @@ class S3RecDataPipeline(DataPipeline):
     def _load_attributes(self):
         logger.info("load item2attributes...")
         df = pd.read_json(os.path.join(self.cfg.data_dir, 'yelp_item2attributes.json')).transpose()
-        self.attributes_count = [df.categories.explode().nunique(), df.statecity.nunique()]
+        self.attributes_count = df.categories.explode().nunique()
 
-        return df.transpose().to_dict()
+        return df.drop(columns=['statecity']).transpose().to_dict()
     
 
     def _set_num_items_and_num_users(self, df):

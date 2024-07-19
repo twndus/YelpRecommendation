@@ -12,20 +12,33 @@ from omegaconf.dictconfig import DictConfig
 import wandb
 
 from models.cdae import CDAE
+from models.s3rec import S3Rec
 from utils import log_metric
 from .base_trainer import BaseTrainer
 from metric import *
 from loss import BPRLoss
 
-class CDAETrainer(BaseTrainer):
-    def __init__(self, cfg: DictConfig, num_items: int, num_users: int) -> None:
+class S3RecTrainer(BaseTrainer):
+    def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes, attributes_count: int) -> None:
         super().__init__(cfg)
-        self.model = CDAE(self.cfg, num_items, num_users) ##
+        self.model = S3Rec(self.cfg, num_items, num_users, attributes_count)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr)
         self.loss = self._loss()
 
     def _loss(self):
         return BPRLoss()
+    
+    def _is_surpass_best_metric(self, **metric) -> bool:
+        (valid_loss,
+             ) = metric['current']
+        
+        (best_valid_loss,
+            ) = metric['best']
+        
+        if self.cfg.best_metric == 'loss':
+            return valid_loss < best_valid_loss
+        else:
+            return False
 
     def run(self, train_dataloader: DataLoader, valid_dataloader: DataLoader):
         logger.info(f"[Trainer] run...")

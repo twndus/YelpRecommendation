@@ -172,7 +172,7 @@ def main(cfg: OmegaConf):
         train_dataset = S3RecDataset(train_data, num_items=data_pipeline.num_items)
         valid_dataset = S3RecDataset(valid_data, num_items=data_pipeline.num_items)
         test_dataset = S3RecDataset(test_data, num_items=data_pipeline.num_items, train=False)
-        args.update({'test_dataset': test_data})
+        args.update({'test_dataset': test_dataset})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:
         raise ValueError()

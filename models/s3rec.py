@@ -37,7 +37,7 @@ class S3Rec(BaseModel):
         return X
 
     def _prediction_layer(self, item, self_attn_output):
-        return torch.matmul(item.T, self_attn_output)
+        return torch.einsum('bi,bi->b', (item, self_attn_output))
 
     def forward(self, X, pos_item, neg_item):
         X = self._embedding_layer(X)
@@ -45,3 +45,12 @@ class S3Rec(BaseModel):
         pos_pred = self._prediction_layer(self.item_embedding(pos_item), X[:, -1])
         neg_pred = self._prediction_layer(self.item_embedding(neg_item), X[:, -1])
         return pos_pred, neg_pred
+
+    def evaluate(self, X, pos_item, neg_items):
+        X = self._embedding_layer(X)
+        X = self._self_attention_block(X)
+        pos_pred = self._prediction_layer(self.item_embedding(pos_item), X[:, -1]).view(pos_item.size(0), -1)
+        neg_preds = [self._prediction_layer(
+            self.item_embedding(neg_items[:,i]), X[:, -1]).view(neg_items.size(0), -1) for i in range(neg_items.size(-1))]
+        neg_preds = torch.concat(neg_preds, dim=1)
+        return pos_pred, neg_preds

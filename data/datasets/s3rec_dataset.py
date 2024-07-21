@@ -41,5 +41,5 @@ class S3RecDataset(Dataset):
                 'user_id': user_id,
                 'X': np.array(data['X'], dtype='int64'),
                 'pos_item': pos_item,
-                'neg_items': self._negative_sampling(data['behaviors'])
+                'neg_items': np.array(self._negative_sampling(data['behaviors']), dtype='int64')
                 }

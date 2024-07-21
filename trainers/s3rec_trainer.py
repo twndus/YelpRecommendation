@@ -114,14 +114,15 @@ class S3RecTrainer(BaseTrainer):
         actual, predicted = [], []
         for data in tqdm(test_dataloader):
             X, pos_item, neg_items = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_items'].to(self.device)
-            scores = self.model.evaluate(X, pos_item, neg_items)
+            pos_scores, neg_scores = self.model.evaluate(X, pos_item, neg_items)
 
             batch_actual, batch_predicted = \
-                self._generate_target_and_top_k_recommendation(scores, pos_item)
+                self._generate_target_and_top_k_recommendation(torch.concat([pos_scores, neg_scores], dim=1), pos_item)
             actual.extend(batch_actual)
             predicted.extend(batch_predicted)
 
-        predicted = np.concatenate(predicted, axis=0)
+        predicted = np.array(predicted)
+        logger.info(f'predicted: {predicted.shape}')
 
         test_precision_at_k = precision_at_k(actual, predicted, self.cfg.top_n)
         test_recall_at_k = recall_at_k(actual, predicted, self.cfg.top_n)
@@ -147,8 +148,8 @@ class S3RecTrainer(BaseTrainer):
         scores_idx[:, 0] = pos_item
 
         # sort topK probs and find their indexes
-        sorted_indices = np.argsort(-scores.cpu().detach().numpy(), axis=1)[:self.cfg.top_n]
+        sorted_indices = np.argsort(-scores.cpu().detach().numpy(), axis=1)[:, :self.cfg.top_n]
         # apply sorted indexes to item indexes to get sorted topK item indexes by user
         predicted = np.take_along_axis(scores_idx, sorted_indices, axis=1)
     
-        return actual.reshape(pos_item.size(0),1).tolist(), predicted[:,:self.cfg.top_n]
+        return actual.reshape(pos_item.size(0),1).tolist(), predicted[:, :self.cfg.top_n]

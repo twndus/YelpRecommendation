@@ -21,7 +21,7 @@ from loss import BPRLoss
 class S3RecTrainer(BaseTrainer):
     def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes, attributes_count: int) -> None:
         super().__init__(cfg)
-        self.model = S3Rec(self.cfg, num_items, num_users, attributes_count)
+        self.model = S3Rec(self.cfg, num_items, num_users, attributes_count).to(self.device)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr)
         self.loss = self._loss()
 
@@ -145,7 +145,7 @@ class S3RecTrainer(BaseTrainer):
 
         # create item index information
         scores_idx = np.zeros_like(scores.cpu().detach().numpy())
-        scores_idx[:, 0] = pos_item
+        scores_idx[:, 0] = pos_item.cpu().detach()
 
         # sort topK probs and find their indexes
         sorted_indices = np.argsort(-scores.cpu().detach().numpy(), axis=1)[:, :self.cfg.top_n]

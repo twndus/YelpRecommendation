@@ -26,6 +26,12 @@ class S3Rec(BaseModel):
         for child in self.children():
             if isinstance(child, nn.Embedding):
                 nn.init.xavier_uniform_(child.weight)
+            elif isinstance(child, nn.ModuleList): # nn.Linear):
+                for sub_child in child.children():
+                    if not isinstance(sub_child, nn.MultiheadAttention):
+                        nn.init.xavier_uniform_(sub_child.weight)
+            else:
+                logger.info(f"other type: {child} / {type(child)}")
 
     def _embedding_layer(self, X):
         return self.item_embedding(X) + self.positional_encoding

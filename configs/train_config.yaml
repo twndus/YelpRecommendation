@@ -14,8 +14,8 @@ notes:      "..."
 tags:       [sweep, yelp, cdae, hyper-parameter, model-structure]
 
 # train config
-device:     cpu
-epochs:     100
+device:     cuda # cpu
+epochs:     5
 batch_size: 32
 lr:         0.0001
 optimizer:  adam # adamw
@@ -49,3 +49,7 @@ model:
     max_seq_len: 50
     num_heads: 2
     num_blocks: 2
+    pretrain: True # False
+    pretrain_epochs: 1 # 100
+    mask_portion: 0.2
+    iter_nums: 200

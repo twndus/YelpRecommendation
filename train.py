@@ -22,7 +22,7 @@ from data.datasets.s3rec_dataset import S3RecDataset
 from trainers.cdae_trainer import CDAETrainer
 from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
-from trainers.s3rec_trainer import S3RecTrainer
+from trainers.s3rec_trainer import S3RecTrainer, S3RecPreTrainer
 from utils import set_seed
 
 
@@ -100,11 +100,17 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
     elif cfg.model_name in ('S3Rec',):
-        trainer = S3RecTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
-                               args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
-        trainer.run(train_dataloader, valid_dataloader)
-        trainer.load_best_model()
-        trainer.evaluate(test_dataloader)
+        if cfg.pretrain:
+            trainer = S3RecPreTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
+                                args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+            trainer.pretrain(args.train_dataset, args.valid_dataset)
+            trainer.load_best_model()
+        else:
+            trainer = S3RecTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
+                                args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+            trainer.run(train_dataloader, valid_dataloader)
+            trainer.load_best_model()
+            trainer.evaluate(test_dataloader)
 
 def unpack_model(cfg: OmegaConf) -> OmegaConf:
     if cfg.model_name not in cfg.model:

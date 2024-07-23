@@ -11,7 +11,7 @@ class S3Rec(BaseModel):
         self.cfg = cfg
         # self.user_embedding = nn.Embedding(num_users, cfg.embed_size, dtype=torch.float32) 
         self.item_embedding = nn.Embedding(num_items + 1, self.cfg.embed_size, dtype=torch.float32)
-        # self.attribute_embedding = nn.Embedding(attributes_count, self.cfg.embed_size, dtype=torch.float32)
+        self.attribute_embedding = nn.Embedding(attributes_count, self.cfg.embed_size, dtype=torch.float32)
         self.positional_encoding = nn.Parameter(torch.rand(self.cfg.max_seq_len, self.cfg.embed_size))
         
         # self.query = nn.ModuleList([nn.Linear(self.cfg.embed_size / self.num_heads) for _ in range(self.cfg.num_heads)])
@@ -20,7 +20,10 @@ class S3Rec(BaseModel):
         self.ffn1s = nn.ModuleList([nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
         self.ffn2s = nn.ModuleList([nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
         self.multihead_attns = nn.ModuleList([nn.MultiheadAttention(self.cfg.embed_size, self.cfg.num_heads) for _ in range(self.cfg.num_blocks)])
+        self.aap_weight = nn.Linear(self.cfg.embed_size, self.cfg.embed_size, bias=False)
+
         self._init_weights()
+
 
     def _init_weights(self):
         for child in self.children():
@@ -30,6 +33,8 @@ class S3Rec(BaseModel):
                 for sub_child in child.children():
                     if not isinstance(sub_child, nn.MultiheadAttention):
                         nn.init.xavier_uniform_(sub_child.weight)
+            elif isinstance(child, nn.Linear):
+                nn.init.xavier_uniform_(child.weight)
             else:
                 logger.info(f"other type: {child} / {type(child)}")
 
@@ -60,3 +65,8 @@ class S3Rec(BaseModel):
             self.item_embedding(neg_items[:,i]), X[:, -1]).view(neg_items.size(0), -1) for i in range(neg_items.size(-1))]
         neg_preds = torch.concat(neg_preds, dim=1)
         return pos_pred, neg_preds
+    
+    def aap(self, items):
+        # item
+        item_embeddings = self.item_embedding(items)
+        return torch.matmul(self.aap_weight(item_embeddings), self.attribute_embedding.weight.T) # (batch, embed_size) * (attribute_size, embed_size) (batch, attribute_size)

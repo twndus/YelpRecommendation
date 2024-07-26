@@ -56,7 +56,7 @@ class S3RecPreTrainer:
         else:
             return False
 
-    def pretrain(self, train_dataset, valid_dataset):
+    def pretrain(self, train_dataset):
         logger.info(f"[Trainer] run...")
 
         best_valid_loss: float = 1e+6
@@ -65,8 +65,8 @@ class S3RecPreTrainer:
 
         # train
         for epoch in range(self.cfg.pretrain_epochs):
-            train_loss: float = self.train(torch.tensor([i for i in range(1, self.num_items+1)], dtype=torch.int32).to(self.device), train_dataset)
-            valid_loss = self.validate(torch.tensor([i for i in range(1, self.num_items+1)], dtype=torch.int32).to(self.device), valid_dataset)
+            train_loss: float = self.train(train_dataset)
+            valid_loss = self.validate(train_dataset)
             logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
                         valid loss: {valid_loss:.4f}''') 
             
@@ -92,42 +92,66 @@ class S3RecPreTrainer:
                 if endurance > self.cfg.patience: 
                     logger.info(f"[Trainer] ealry stopping...")
                     break
+    
+    def item_level_masking(self, sequences):
+        masks = torch.rand_like(sequences, dtype=torch.float32) < .2
+        item_masked_sequences = masks * sequences
+        return masks, item_masked_sequences
 
-    def train(self, item_datasets, sequence_datasets) -> float:
+    def segment_masking(self, sequences):
+        masks, pos_sequences, neg_sequences = torch.zeros_like(sequences), torch.zeros_like(sequences), torch.zeros_like(sequences)
+        for i in range(sequences.size(0)):
+            # sample segment length randomly
+            segment_len = torch.randint(low=2, high=self.cfg.max_seq_len//2, size=(1,))
+            # start_index
+            start_idx = torch.randint(self.cfg.max_seq_len-segment_len, size=(1,))
+            masks[i, start_idx:start_idx+segment_len] = 1
+            # pos_sequence
+            pos_sequences[i, -segment_len:] = sequences[i, start_idx:start_idx+segment_len]
+            # neg_sequence 
+            ## other user in same batch
+            neg_user_idx = torch.randint(sequences.size(0), size=(1,))
+            while neg_user_idx != i:
+                neg_user_idx = torch.randint(sequences.size(0), size=(1,))
+            ## start_idx
+            neg_start_idx = torch.randint(self.cfg.max_seq_len-segment_len, size=(1,))
+            neg_sequences[i, -segment_len:] = sequences[neg_user_idx, neg_start_idx:neg_start_idx+segment_len]
+        segment_masked_sequences = (1-masks) * sequences
+        return segment_masked_sequences, pos_sequences, neg_sequences
+
+    # def train(self, item_datasets, sequence_datasets) -> float:
+    def train(self, train_dataloader) -> float:
         self.model.train()
         train_loss = 0
         
-        for iter_num in tqdm(range(self.cfg.iter_nums)): # sequence
-            item_chunk_size = self.num_items // self.cfg.iter_nums
-            items = item_datasets[item_chunk_size * iter_num: item_chunk_size * (iter_num + 1)]
+        for data in tqdm(train_dataloader): # sequence
+            sequences = data['X'].to(self.device)
+            # item_masked_sequences
+            masks, item_masked_sequences = self.item_level_masking(sequences)
+            # segment_masked_sequences
+            segment_masked_sequences, pos_segments, neg_segments = self.segment_masking(sequences)
 
-            sequence_chunk_size = self.num_users // self.cfg.iter_nums
-            # sequences = sequence_datasets[sequence_chunk_size * iter_num: sequence_chunk_size * (iter_num + 1)]
+            # pretrain
+            aap_output, mip_output, map_output, (sp_output_pos, sp_output_neg) = self.model.pretrain(
+                item_masked_sequences, segment_masked_sequences, pos_segments, neg_segments)
 
             # AAP: item + atrributes
-            pred = self.model.aap(items) # (item_chunk_size, attributes_count)
-            actual = torch.Tensor([[1 if attriute in self.item2attribute[item.item()] else 0 for attriute in range(self.attributes_count)] for item in items]).to(self.device) # (item_chunk_size, attributes_count)
-            aap_loss = nn.functional.binary_cross_entropy_with_logits(pred, actual)
+            aap_actual = torch.ones_like(aap_output).to(self.device)
+#            actual = torch.Tensor([
+#                [1 if attriute in self.item2attribute[item.item()] else 0 \
+        #                for attriute in range(self.attributes_count)] for item in items]
+#                ).to(self.device) # (item_chunk_size, attributes_count)
+            ## compute unmasked area only
+            aap_loss = nn.functional.binary_cross_entropy_with_logits(aap_output, aap_actual)
             
             # MIP: sequence + item
-            # mask
-            # def random_mask(sequence):
-            #     # mask = torch.Tensor([0] * sequence.size(0))
-            #     non_zero_count = torch.nonzero(sequence, as_tuple=True)[0].size(0)
-            #     mask_indices = torch.randint(sequence.size(0) - non_zero_count, sequence.size(0), size=1)
-            #     # mask[mask_indices] = 1
-            #     return mask_indices
+            ## compute masked area only
 
-            # masks = torch.Tensor([random_mask(sequence) for sequence in sequences]) # ()
-            # masked_sequences = sequences * (1 - masks)
-            # pred = self.model.mip(masked_sequences, ) # (sequence_chunk_size, mask_count, sequence_len) item idx pred
-            # nn.functional.binary_cross_entropy
-            # # MAP: sequence + attributes
-            # map_loss = self.loss()
-            # # SP: sequence + segment
-            # sp_loss = self.loss()
-            # # X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            # # pos_pred, neg_pred = self.model(X, pos_item, neg_item)
+            # MAP: sequence + attribute
+            ## compute masked area only
+            
+            # SP: sequence + segment
+            ## pos_segment > neg_segment
 
             self.optimizer.zero_grad()
             # loss = self.loss(pos_pred, neg_pred)
@@ -139,45 +163,12 @@ class S3RecPreTrainer:
 
         return train_loss
     
-    def validate(self, item_datasets, sequence_datasets) -> float:
+    def validate(self, sequence_datasets) -> float:
         self.model.eval()
         valid_loss = 0
         
         for iter_num in tqdm(range(self.cfg.iter_nums)): # sequence
-            item_chunk_size = self.num_items // self.cfg.iter_nums
-            items = item_datasets[item_chunk_size * iter_num: item_chunk_size * (iter_num + 1)]
-
-            sequence_chunk_size = self.num_users // self.cfg.iter_nums
-            # sequences = sequence_datasets[sequence_chunk_size * iter_num: sequence_chunk_size * (iter_num + 1)]
-
-            # AAP: item + atrributes
-            pred = self.model.aap(items) # (item_chunk_size, attributes_count)
-            actual = torch.Tensor([[1 if attriute in self.item2attribute[item.item()] else 0 for attriute in range(self.attributes_count)] for item in items]).to(self.device) # (item_chunk_size, attributes_count)
-            aap_loss = nn.functional.binary_cross_entropy_with_logits(pred, actual)
-            
-            # MIP: sequence + item
-            # mask
-            # def random_mask(sequence):
-            #     # mask = torch.Tensor([0] * sequence.size(0))
-            #     non_zero_count = torch.nonzero(sequence, as_tuple=True)[0].size(0)
-            #     mask_indices = torch.randint(sequence.size(0) - non_zero_count, sequence.size(0), size=1)
-            #     # mask[mask_indices] = 1
-            #     return mask_indices
-
-            # masks = torch.Tensor([random_mask(sequence) for sequence in sequences]) # ()
-            # masked_sequences = sequences * (1 - masks)
-            # pred = self.model.mip(masked_sequences, ) # (sequence_chunk_size, sequence_len) item idx pred
-            # nn.functional.binary_cross_entropy
-            # # MAP: sequence + attributes
-            # map_loss = self.loss()
-            # # SP: sequence + segment
-            # sp_loss = self.loss()
-            # # X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            # # pos_pred, neg_pred = self.model(X, pos_item, neg_item)
-
-            # loss = self.loss(pos_pred, neg_pred)
-            loss = aap_loss # + mip_loss + map_loss + sp_loss
-
+            break
             valid_loss += loss.item()
 
         return valid_loss
@@ -250,7 +241,7 @@ class S3RecTrainer(BaseTrainer):
         train_loss = 0
         for data in tqdm(train_dataloader):
             X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            pos_pred, neg_pred = self.model(X, pos_item, neg_item)
+            pos_pred, neg_pred = self.model.finetune(X, pos_item, neg_item)
 
             self.optimizer.zero_grad()
             loss = self.loss(pos_pred, neg_pred)
@@ -267,7 +258,7 @@ class S3RecTrainer(BaseTrainer):
         # actual, predicted = [], []
         for data in tqdm(valid_dataloader):
             X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            pos_pred, neg_pred = self.model(X, pos_item, neg_item)
+            pos_pred, neg_pred = self.model.finetune(X, pos_item, neg_item)
 
             self.optimizer.zero_grad()
             loss = self.loss(pos_pred, neg_pred)

@@ -103,7 +103,7 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         if cfg.pretrain:
             trainer = S3RecPreTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
                                 args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
-            trainer.pretrain(args.train_dataset, args.valid_dataset)
+            trainer.pretrain(train_dataloader)
             trainer.load_best_model()
         else:
             trainer = S3RecTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 

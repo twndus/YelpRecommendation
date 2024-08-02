@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from tqdm import tqdm
 
@@ -18,7 +19,7 @@ from metric import *
 from loss import BPRLoss
 
 class S3RecPreTrainer:
-    def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes, attributes_count: int) -> None:
+    def __init__(self, cfg: DictConfig, num_items: int, item2attributes, attributes_count: int) -> None:
         self.cfg = cfg
         self.device = self.cfg.device
         self.model = S3Rec(self.cfg, num_items, attributes_count).to(self.device)
@@ -26,7 +27,6 @@ class S3RecPreTrainer:
         self.loss = self._loss()
         self.item2attribute =  item2attributes
         self.num_items = num_items
-        self.num_users = num_users
         self.attributes_count = attributes_count
 
     def _loss(self): 
@@ -57,33 +57,28 @@ class S3RecPreTrainer:
             return False
 
     def pretrain(self, train_dataset):
-        logger.info(f"[Trainer] run...")
+        logger.info(f"[Pre-Trainer] run...")
 
-        best_valid_loss: float = 1e+6
-        best_epoch: int = 0
+        best_train_loss: float = 1e+6
         endurance: int = 0
 
         # train
         for epoch in range(self.cfg.pretrain_epochs):
             train_loss: float = self.train(train_dataset)
-            valid_loss = self.validate(train_dataset)
-            logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
-                        valid loss: {valid_loss:.4f}''') 
+            logger.info(f'''\n[Pre-Trainer] epoch: {epoch} > pretrain loss: {train_loss:.4f}''') 
             
             if self.cfg.wandb:
                 wandb.log({
-                    'train_loss': train_loss,
-                    'valid_loss': valid_loss,
+                    'pretrain_loss': train_loss,
                 })
 
             # update model
             if self._is_surpass_best_metric(
-                current=(valid_loss,),
-                best=(best_valid_loss,)):
+                current=(train_loss,),
+                best=(best_train_loss,)):
                 
                 logger.info(f"[Trainer] update best model...")
-                best_valid_loss = valid_loss
-                best_epoch = epoch
+                best_train_loss = train_loss
                 endurance = 0
 
                 torch.save(self.model.state_dict(), f'{self.cfg.model_dir}/best_pretrain_model.pt')
@@ -94,7 +89,7 @@ class S3RecPreTrainer:
                     break
     
     def item_level_masking(self, sequences):
-        masks = torch.rand_like(sequences, dtype=torch.float32) < .2
+        masks = torch.rand_like(sequences, dtype=torch.float32) < self.cfg.mask_portion
         item_masked_sequences = masks * sequences
         return masks, item_masked_sequences
 
@@ -128,6 +123,8 @@ class S3RecPreTrainer:
             sequences = data['X'].to(self.device)
             aap_actual = data['aap_actual'].to(self.device)
             mip_actual = data['mip_actual'].to(self.device)
+            map_actual = data['aap_actual'].to(self.device)
+
             # item_masked_sequences
             masks, item_masked_sequences = self.item_level_masking(sequences)
             # segment_masked_sequences
@@ -144,19 +141,23 @@ class S3RecPreTrainer:
             
             # MIP: sequence + item
             ## compute masked area only
-            mip_actual = mip_actual * masks.unsqueeze(-1)
+            mip_output = mip_output * masks.logical_not().unsqueeze(-1)
+            mip_actual = mip_actual * masks.logical_not().unsqueeze(-1)
             mip_loss = nn.functional.binary_cross_entropy_with_logits(mip_output, mip_actual)
 
             # MAP: sequence + attribute
             ## compute masked area only
-            map_loss = 0
+            map_output = map_output * masks.logical_not().unsqueeze(-1)
+            map_actual = map_actual * masks.logical_not().unsqueeze(-1)
+            map_loss = nn.functional.binary_cross_entropy_with_logits(map_output, map_actual)
             
             # SP: sequence + segment
             ## pos_segment > neg_segment
-            sp_loss = 0
+            sp_output = torch.concat([sp_output_neg, sp_output_pos], dim=0)
+            sp_actual = torch.concat([torch.zeros(data['X'].size(0)), torch.ones(data['X'].size(0))]).to(self.device)
+            sp_loss = nn.functional.binary_cross_entropy_with_logits(sp_output, sp_actual)
 
             self.optimizer.zero_grad()
-            # loss = self.loss(pos_pred, neg_pred)
             loss = aap_loss + mip_loss + map_loss + sp_loss
             loss.backward()
             self.optimizer.step()
@@ -165,26 +166,17 @@ class S3RecPreTrainer:
 
         return train_loss
     
-    def validate(self, sequence_datasets) -> float:
-        self.model.eval()
-        valid_loss = 0
-        
-        for iter_num in tqdm(range(self.cfg.iter_nums)): # sequence
-            break
-            valid_loss += loss.item()
-
-        return valid_loss
-    
     def load_best_model(self):
         logger.info(f"[Trainer] Load best model...")
         self.model.load_state_dict(torch.load(f'{self.cfg.model_dir}/best_pretrain_model.pt'))
 
 class S3RecTrainer(BaseTrainer):
-    def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes, attributes_count: int) -> None:
+    def __init__(self, cfg: DictConfig, num_items: int, item2attributes, attributes_count: int) -> None:
         super().__init__(cfg)
-        self.model = S3Rec(self.cfg, num_items, num_users, attributes_count).to(self.device)
+        self.model = S3Rec(self.cfg, num_items, attributes_count).to(self.device)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr)
         self.loss = self._loss()
+        self._load_best_pretrain_model()
 
     def _loss(self):
         return BPRLoss()
@@ -300,6 +292,12 @@ class S3RecTrainer(BaseTrainer):
                 test_recall_at_k,
                 test_map_at_k,
                 test_ndcg_at_k)
+    
+    def _load_best_pretrain_model(self):
+        pretrain_model_dir = f'{self.cfg.model_dir}/best_pretrain_model.pt'
+        if self.cfg.load_pretrain and os.path.exists(pretrain_model_dir):
+            logger.info(f"[Trainer] Load best pretrain model...")
+            self.model.load_state_dict(torch.load(f'{self.cfg.model_dir}/best_pretrain_model.pt'))
 
     def _generate_target_and_top_k_recommendation(self, scores: Tensor, pos_item: Tensor) -> tuple[list]:
         actual = pos_item.cpu().detach().numpy()

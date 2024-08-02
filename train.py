@@ -101,16 +101,16 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.evaluate(args.test_eval_data, 'test')
     elif cfg.model_name in ('S3Rec',):
         if cfg.pretrain:
-            trainer = S3RecPreTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
+            pretrainer = S3RecPreTrainer(cfg, args.model_info['num_items'], 
                                 args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
-            trainer.pretrain(train_dataloader)
-            trainer.load_best_model()
-        else:
-            trainer = S3RecTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
-                                args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
-            trainer.run(train_dataloader, valid_dataloader)
-            trainer.load_best_model()
-            trainer.evaluate(test_dataloader)
+            pretrainer.pretrain(train_dataloader)
+            pretrainer.load_best_model()
+    
+        trainer = S3RecTrainer(cfg, args.model_info['num_items'], 
+                            args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+        trainer.run(train_dataloader, valid_dataloader)
+        trainer.load_best_model()
+        trainer.evaluate(test_dataloader)
 
 def unpack_model(cfg: OmegaConf) -> OmegaConf:
     if cfg.model_name not in cfg.model:

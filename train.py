@@ -175,9 +175,9 @@ def main(cfg: OmegaConf):
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     elif cfg.model_name == 'S3Rec':
         train_data, valid_data, test_data = data_pipeline.split(df)
-        train_dataset = S3RecDataset(train_data, num_items=data_pipeline.num_items)
-        valid_dataset = S3RecDataset(valid_data, num_items=data_pipeline.num_items)
-        test_dataset = S3RecDataset(test_data, num_items=data_pipeline.num_items, train=False)
+        train_dataset = S3RecDataset(train_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        valid_dataset = S3RecDataset(valid_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        test_dataset = S3RecDataset(test_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items, train=False)
         args.update({'test_dataset': test_dataset})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:

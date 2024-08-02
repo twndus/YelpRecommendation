@@ -126,6 +126,7 @@ class S3RecPreTrainer:
         
         for data in tqdm(train_dataloader): # sequence
             sequences = data['X'].to(self.device)
+            aap_actual = data['aap_actual'].to(self.device)
             # item_masked_sequences
             masks, item_masked_sequences = self.item_level_masking(sequences)
             # segment_masked_sequences
@@ -136,11 +137,7 @@ class S3RecPreTrainer:
                 item_masked_sequences, segment_masked_sequences, pos_segments, neg_segments)
 
             # AAP: item + atrributes
-            aap_actual = torch.ones_like(aap_output).to(self.device)
-#            actual = torch.Tensor([
-#                [1 if attriute in self.item2attribute[item.item()] else 0 \
-        #                for attriute in range(self.attributes_count)] for item in items]
-#                ).to(self.device) # (item_chunk_size, attributes_count)
+            aap_actual = aap_actual * masks.unsqueeze(-1)
             ## compute unmasked area only
             aap_loss = nn.functional.binary_cross_entropy_with_logits(aap_output, aap_actual)
             

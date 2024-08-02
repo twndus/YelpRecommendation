@@ -33,13 +33,17 @@ class S3RecDataset(Dataset):
         pos_item = data['y'].astype('int64')
         aap_actual = np.array([[1 if attriute in self.item2attribute[item]['categories'] else 0 \
                                 for attriute in range(self.attributes_count)] for item in data['X']], dtype='float')
+        mip_actual = np.zeros((len(data['X']), self.num_items+1), dtype='float')
+        for i, item in enumerate(data['X']):
+            mip_actual[i, item] = 1
         if self.train:
             return {
                 'user_id': user_id,
                 'X': np.array(data['X'], dtype='int64'),
                 'pos_item': pos_item,
                 'neg_item': self._negative_sampling(data['behaviors'])[0],
-                'aap_actual': aap_actual
+                'aap_actual': aap_actual,
+                'mip_actual': mip_actual,
                 }
         else:
             return {
@@ -47,5 +51,6 @@ class S3RecDataset(Dataset):
                 'X': np.array(data['X'], dtype='int64'),
                 'pos_item': pos_item,
                 'neg_items': np.array(self._negative_sampling(data['behaviors']), dtype='int64'),
-                'aap_actual': aap_actual
+                'aap_actual': aap_actual,
+                'mip_actual': mip_actual,
                 }

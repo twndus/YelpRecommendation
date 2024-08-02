@@ -6,7 +6,7 @@ from models.base_model import BaseModel
 from loguru import logger
 class S3Rec(BaseModel):
 
-    def __init__(self, cfg, num_users, num_items, attributes_count):
+    def __init__(self, cfg, num_items, attributes_count):
         super().__init__()
         self.cfg = cfg
         self.item_embedding = nn.Embedding(num_items + 1, self.cfg.embed_size, dtype=torch.float32)

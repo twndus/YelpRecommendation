@@ -21,7 +21,7 @@ class S3RecPreTrainer:
     def __init__(self, cfg: DictConfig, num_items: int, num_users: int, item2attributes, attributes_count: int) -> None:
         self.cfg = cfg
         self.device = self.cfg.device
-        self.model = S3Rec(self.cfg, num_items, num_users, attributes_count).to(self.device)
+        self.model = S3Rec(self.cfg, num_items, attributes_count).to(self.device)
         self.optimizer: Optimizer = self._optimizer(self.cfg.optimizer, self.model, self.cfg.lr)
         self.loss = self._loss()
         self.item2attribute =  item2attributes
@@ -127,6 +127,7 @@ class S3RecPreTrainer:
         for data in tqdm(train_dataloader): # sequence
             sequences = data['X'].to(self.device)
             aap_actual = data['aap_actual'].to(self.device)
+            mip_actual = data['mip_actual'].to(self.device)
             # item_masked_sequences
             masks, item_masked_sequences = self.item_level_masking(sequences)
             # segment_masked_sequences
@@ -143,16 +144,20 @@ class S3RecPreTrainer:
             
             # MIP: sequence + item
             ## compute masked area only
+            mip_actual = mip_actual * masks.unsqueeze(-1)
+            mip_loss = nn.functional.binary_cross_entropy_with_logits(mip_output, mip_actual)
 
             # MAP: sequence + attribute
             ## compute masked area only
+            map_loss = 0
             
             # SP: sequence + segment
             ## pos_segment > neg_segment
+            sp_loss = 0
 
             self.optimizer.zero_grad()
             # loss = self.loss(pos_pred, neg_pred)
-            loss = aap_loss # + mip_loss + map_loss + sp_loss
+            loss = aap_loss + mip_loss + map_loss + sp_loss
             loss.backward()
             self.optimizer.step()
 

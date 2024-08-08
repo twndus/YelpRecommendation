@@ -26,7 +26,7 @@ weight_decay: 0 #1e-5
 best_metric: loss # loss, precision, recall, map, ndcg
 
 # model config
-model_name: S3Rec 
+model_name: PopRec 
 model:
   CDAE:
     negative_sampling: True # False
@@ -53,3 +53,5 @@ model:
     load_pretrain: True
     pretrain_epochs: 100 # 100
     mask_portion: 0.2
+  PopRec:
+    max_seq_len: 50

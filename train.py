@@ -15,14 +15,17 @@ from data.datasets.mf_data_pipeline import MFDataPipeline
 from data.datasets.dcn_data_pipeline import DCNDatapipeline
 from data.datasets.ngcf_data_pipeline import NGCFDataPipeline
 from data.datasets.s3rec_data_pipeline import S3RecDataPipeline
+from data.datasets.poprec_data_pipeline import PopRecDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
 from data.datasets.dcn_dataset import DCNDataset
 from data.datasets.s3rec_dataset import S3RecDataset
+from data.datasets.poprec_dataset import PopRecDataset
 from trainers.cdae_trainer import CDAETrainer
 from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
 from trainers.s3rec_trainer import S3RecTrainer, S3RecPreTrainer
+from trainers.poprec_trainer import PopRecTrainer
 from utils import set_seed
 
 
@@ -51,10 +54,10 @@ def update_config_hyperparameters(cfg):
         cfg[parameter] = wandb.config[parameter]
         logger.info(f"[{parameter}] {cfg[parameter]}")
 
-def run(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
+def run(cfg, args):
     set_seed(cfg.seed)
     init_wandb_if_needed(cfg)
-    train(cfg, args)#train_dataset, valid_dataset, test_dataset, model_info)
+    train(cfg, args)
     finish_wandb_if_needed(cfg)
 
 def run_sweep(cfg, args):
@@ -63,13 +66,13 @@ def run_sweep(cfg, args):
                 function=lambda: sweep(cfg, args),
                 count=cfg.sweep_count)
 
-def sweep(cfg, args):# *datasets):
+def sweep(cfg, args):
     set_seed(cfg.seed)
     init_wandb_if_needed(cfg)
     update_config_hyperparameters(cfg)
-    train(cfg, args)#*datasets)
+    train(cfg, args)
 
-def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
+def train(cfg, args):
     # set dataloaders
     train_dataloader = DataLoader(args.train_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
     valid_dataloader = DataLoader(args.valid_dataset, batch_size=cfg.batch_size, shuffle=cfg.shuffle)
@@ -111,6 +114,11 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.run(train_dataloader, valid_dataloader)
         trainer.load_best_model()
         trainer.evaluate(test_dataloader)
+    elif cfg.model_name in ('PopRec',):
+        trainer = PopRecTrainer(cfg, args.item_list)
+        trainer.evaluate(train_dataloader)
+        trainer.evaluate(valid_dataloader)
+        trainer.evaluate(test_dataloader)
 
 def unpack_model(cfg: OmegaConf) -> OmegaConf:
     if cfg.model_name not in cfg.model:
@@ -139,6 +147,8 @@ def main(cfg: OmegaConf):
         data_pipeline = NGCFDataPipeline(cfg)
     elif cfg.model_name == 'S3Rec':
         data_pipeline = S3RecDataPipeline(cfg)
+    elif cfg.model_name == 'PopRec':
+        data_pipeline = PopRecDataPipeline(cfg)
     else:
         raise ValueError()
 
@@ -179,6 +189,14 @@ def main(cfg: OmegaConf):
         valid_dataset = S3RecDataset(valid_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
         test_dataset = S3RecDataset(test_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items, train=False)
         args.update({'test_dataset': test_dataset})
+        model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
+    elif cfg.model_name == 'PopRec':
+        item_list = data_pipeline.get_item_list_based_on_popularity(df)
+        train_data, valid_data, test_data = data_pipeline.split(df)
+        train_dataset = PopRecDataset(train_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        valid_dataset = PopRecDataset(valid_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        test_dataset = PopRecDataset(test_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        args.update({'test_dataset': test_dataset, 'item_list': item_list})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:
         raise ValueError()

@@ -4,6 +4,8 @@ import torch.nn as nn
 from models.base_model import BaseModel
 
 from loguru import logger
+
+
 class S3Rec(BaseModel):
 
     def __init__(self, cfg, num_items, attributes_count):
@@ -12,10 +14,21 @@ class S3Rec(BaseModel):
         self.item_embedding = nn.Embedding(num_items + 1, self.cfg.embed_size, dtype=torch.float32)
         self.attribute_embedding = nn.Embedding(attributes_count, self.cfg.embed_size, dtype=torch.float32)
         self.positional_encoding = nn.Parameter(torch.rand(self.cfg.max_seq_len, self.cfg.embed_size))
+
+        self.multihead_attns = nn.ModuleList(
+            [nn.MultiheadAttention(self.cfg.embed_size, self.cfg.num_heads) for _ in range(self.cfg.num_blocks)])
+        self.layernorm1s = nn.ModuleList(
+            [nn.LayerNorm(self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
         
-        self.ffn1s = nn.ModuleList([nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
-        self.ffn2s = nn.ModuleList([nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
-        self.multihead_attns = nn.ModuleList([nn.MultiheadAttention(self.cfg.embed_size, self.cfg.num_heads) for _ in range(self.cfg.num_blocks)])
+        self.ffn1s = nn.ModuleList(
+            [nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
+        self.ffn2s = nn.ModuleList(
+            [nn.Linear(self.cfg.embed_size, self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
+        self.layernorm2s = nn.ModuleList(
+            [nn.LayerNorm(self.cfg.embed_size) for _ in range(self.cfg.num_blocks)])
+
+        self.dropout = nn.Dropout(self.cfg.dropout_ratio)
+
         self.aap_weight = nn.Linear(self.cfg.embed_size, self.cfg.embed_size, bias=False)
         self.mip_weight = nn.Linear(self.cfg.embed_size, self.cfg.embed_size, bias=False)
         self.map_weight = nn.Linear(self.cfg.embed_size, self.cfg.embed_size, bias=False)
@@ -29,7 +42,7 @@ class S3Rec(BaseModel):
                 nn.init.xavier_uniform_(child.weight)
             elif isinstance(child, nn.ModuleList): # nn.Linear):
                 for sub_child in child.children():
-                    if not isinstance(sub_child, nn.MultiheadAttention):
+                    if isinstance(sub_child, nn.Linear):
                         nn.init.xavier_uniform_(sub_child.weight)
             elif isinstance(child, nn.Linear):
                 nn.init.xavier_uniform_(child.weight)
@@ -40,9 +53,20 @@ class S3Rec(BaseModel):
         return self.item_embedding(X) + self.positional_encoding
         
     def _self_attention_block(self, X):
-        for multihead_attn, ffn1, ffn2 in zip(self.multihead_attns, self.ffn1s, self.ffn2s):
+        for multihead_attn, ffn1, ffn2, layernorm1, layernorm2 in zip(
+                self.multihead_attns, self.ffn1s, self.ffn2s, self.layernorm1s, self.layernorm2s):
+            # multi-head self-attention
             attn_output, attn_output_weights = multihead_attn(X, X, X)
-            X = ffn2(nn.functional.relu(ffn1(attn_output)))
+            # dropout
+            attn_output = self.dropout(attn_output)
+            # add & norm
+            normalized_attn_output = layernorm1(X + attn_output)
+            # feed-forward network
+            ffn_output = ffn2(nn.functional.relu(ffn1(normalized_attn_output)))
+            # dropout
+            ffn_output = self.dropout(ffn_output)
+            # add & norm
+            X = layernorm2(X + ffn_output)
         return X
 
     def _prediction_layer(self, item, self_attn_output):

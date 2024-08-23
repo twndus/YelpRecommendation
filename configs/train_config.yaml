@@ -8,14 +8,14 @@ log_dir:    logs/
 sweep:      False
 
 # wandb config
-wandb:      True # True/ False
+wandb:      False
 project:    YelpRecommendation
 notes:      "..."
 tags:       [yelp, s3rec]
 
 # train config
-device:     cuda # cpu
-epochs:     100
+device:     cpu 
+epochs:     5 
 batch_size: 32
 lr:         0.0001
 optimizer:  adam # adamw
@@ -49,7 +49,8 @@ model:
     max_seq_len: 50
     num_heads: 2
     num_blocks: 2
-    pretrain: True # False
+    pretrain: False # False
     load_pretrain: True
     pretrain_epochs: 100 # 100
     mask_portion: 0.2
+    dropout_ratio: 0.1

@@ -57,10 +57,6 @@ class S3Rec(BaseModel):
         for multihead_attn, ffn1, ffn2, layernorm1, layernorm2 in zip(
                 self.multihead_attns, self.ffn1s, self.ffn2s, self.layernorm1s, self.layernorm2s):
             # # multi-head self-attention
-            # merged_mask,_ = multihead_attn.merge_masks(attn_mask, padding_mask, X)
-            # attn_output, attn_output_weights = multihead_attn(
-            #     X, X, X, #key_padding_mask=padding_mask, 
-            #     is_causal=True, attn_mask=attn_mask)
             attn_output = multihead_attn(X, X, X, padding_mask, attn_mask)
             # dropout
             attn_output = self.dropout(attn_output)
@@ -80,9 +76,10 @@ class S3Rec(BaseModel):
     def finetune(self, X, pos_item, neg_item):
         # create padding mask
         padding_mask = (X <= 0).to(self.cfg.device)
+        # create attn mask
         attn_mask = torch.triu(
-            torch.ones(self.cfg.max_seq_len, self.cfg.max_seq_len), diagonal=1
-            ).bool().to(self.cfg.device)
+            torch.zeros(self.cfg.max_seq_len, self.cfg.max_seq_len) + torch.finfo(torch.float32).min,
+            diagonal=1).to(self.cfg.device)
         X = self._embedding_layer(X)
         X = self._self_attention_block(X, padding_mask, attn_mask)
         pos_pred = self._prediction_layer(self.item_embedding(pos_item), X[:, -1])
@@ -168,8 +165,6 @@ class S3Rec(BaseModel):
 class MultiHeadAttention(nn.Module):
     def __init__(self, embed_size, num_heads):
         super().__init__()
-        # self.multihead_attns = nn.ModuleList(
-        # [nn.MultiheadAttention(self.cfg.embed_size, self.cfg.num_heads, batch_first=True) for _ in range(self.cfg.num_blocks)])
         self.embed_size = embed_size
         self.num_heads = num_heads
         self.q_weights = nn.ModuleList(
@@ -181,27 +176,18 @@ class MultiHeadAttention(nn.Module):
         self.output = nn.Linear(num_heads * embed_size, embed_size)
 
     def forward(self, q, k, v, padding_mask, attn_mask):
-        # merged_mask,_ = multihead_attn.merge_masks(attn_mask, padding_mask, X)
-        # attn_output, attn_output_weights = multihead_attn(
-        #     X, X, X, #key_padding_mask=padding_mask, 
-        #     is_causal=True, attn_mask=attn_mask)
-        # # dropout
         attention_outputs = []
         for q_weight, k_weight, v_weight in zip(self.q_weights, self.k_weights, self.v_weights):
             Q = q_weight(q)
             K = k_weight(k) # (B, L, E)
             K = K * padding_mask.unsqueeze(2) # (B, L)
-            logger.info(K)
             V = v_weight(v)
 
             attention_score = torch.matmul(Q, K.permute(0,2,1).contiguous()) # (B, L, L)
             attention_score /= math.sqrt(self.embed_size) 
-            attention_score = attention_score * attn_mask.unsqueeze(0)
-            logger.info(attention_score)
-            attention_score = torch.nn.functional.softmax(attention_score)
-            logger.info(attention_score)
+            attention_score += attn_mask
+            attention_score = torch.nn.functional.softmax(attention_score, dim=-1)
             attention_score = torch.matmul(attention_score, V) # (B, L, E)
-            # torch.einsum('bi,bi->b', Q, K) # (batch, seq_len, embed_size)
             attention_outputs.append(attention_score) # (H, B, L, E)
         
         attention_scores = torch.cat(attention_outputs, dim=-1) # (B, L, E*H)

@@ -73,7 +73,20 @@ class S3Rec(BaseModel):
     def _prediction_layer(self, item, self_attn_output):
         return torch.einsum('bi,bi->b', (item, self_attn_output))
 
-    def finetune(self, X, pos_item, neg_item):
+    def _sequence_prediction_layer(self, items, self_attn_outputs):
+        '''
+            input: 
+                items: batch, max_seq_len, embed_size
+                self_attn_outputs: batch, max_seq_len, embed_size
+
+            return:
+                batch*max_seq_len,
+        '''
+        return torch.einsum('bi,bi->b', 
+            (items.view(-1, self.cfg.embed_size), self_attn_outputs.view(-1, self.cfg.embed_size)))
+        
+
+    def finetune(self, X, pos_items, neg_items):
         # create padding mask
         padding_mask = (X <= 0).to(self.cfg.device)
         # create attn mask
@@ -82,13 +95,19 @@ class S3Rec(BaseModel):
             diagonal=1).to(self.cfg.device)
         X = self._embedding_layer(X)
         X = self._self_attention_block(X, padding_mask, attn_mask)
-        pos_pred = self._prediction_layer(self.item_embedding(pos_item), X[:, -1])
-        neg_pred = self._prediction_layer(self.item_embedding(neg_item), X[:, -1])
-        return pos_pred, neg_pred
+        pos_preds = self._sequence_prediction_layer(self.item_embedding(pos_items), X)
+        neg_preds = self._sequence_prediction_layer(self.item_embedding(neg_items), X)
+        return pos_preds, neg_preds
 
     def evaluate(self, X, pos_item, neg_items):
+        # create padding mask
+        padding_mask = (X <= 0).to(self.cfg.device)
+        # create attn mask
+        attn_mask = torch.triu(
+            torch.zeros(self.cfg.max_seq_len, self.cfg.max_seq_len) + torch.finfo(torch.float32).min,
+            diagonal=1).to(self.cfg.device)
         X = self._embedding_layer(X)
-        X = self._self_attention_block(X)
+        X = self._self_attention_block(X, padding_mask, attn_mask)
         pos_pred = self._prediction_layer(self.item_embedding(pos_item), X[:, -1]).view(pos_item.size(0), -1)
         neg_preds = [self._prediction_layer(
             self.item_embedding(neg_items[:,i]), X[:, -1]).view(neg_items.size(0), -1) for i in range(neg_items.size(-1))]

@@ -30,7 +30,8 @@ class S3RecDataset(Dataset):
     
     def __getitem__(self, user_id):
         data = self.data.iloc[user_id,:]
-        pos_item = data['y'].astype('int64')
+        pos_items = np.array(data['Y'], dtype='int64')
+        pos_item = pos_items[-1]
         aap_actual = np.array([[1 if attriute in self.item2attribute[item]['categories'] else 0 \
                                 for attriute in range(self.attributes_count)] for item in data['X']], dtype='float')
         mip_actual = np.zeros((len(data['X']), self.num_items+1), dtype='float')
@@ -40,8 +41,8 @@ class S3RecDataset(Dataset):
             return {
                 'user_id': user_id,
                 'X': np.array(data['X'], dtype='int64'),
-                'pos_item': pos_item,
-                'neg_item': self._negative_sampling(data['behaviors'])[0],
+                'pos_items': pos_items,
+                'neg_items': np.array([self._negative_sampling(data['behaviors'])[0] for _ in range(pos_items.shape[0])]),
                 'aap_actual': aap_actual,
                 'mip_actual': mip_actual,
                 }

@@ -13,20 +13,24 @@ class S3RecDataPipeline(DataPipeline):
     def split(self, df: pd.DataFrame):
         # train X: [:-3] y: -3
         train_df_X = df.behaviors.apply(lambda row: row[: -3]).rename('X')
-        train_df_Y = df.behaviors.apply(lambda row: row[-3]).rename('y')
+        train_df_Y = df.behaviors.apply(lambda row: row[1:-2]).rename('Y')
 
         # valid X: [:-2] y: -2 
         valid_df_X = df.behaviors.apply(lambda row: row[: -2]).rename('X')
-        valid_df_Y = df.behaviors.apply(lambda row: row[-2]).rename('y')
+        valid_df_Y = df.behaviors.apply(lambda row: row[2:-1]).rename('Y')
 
         # test X: [:-1] y: -1 
         test_df_X = df.behaviors.apply(lambda row: row[: -1]).rename('X')
-        test_df_Y = df.behaviors.apply(lambda row: row[-1]).rename('y')
+        test_df_Y = df.behaviors.apply(lambda row: row[3:]).rename('Y')
 
         # pre-padding for input sequence X
         train_df_X = self._adjust_seq_len(train_df_X)
         valid_df_X = self._adjust_seq_len(valid_df_X)
         test_df_X = self._adjust_seq_len(test_df_X)
+
+        train_df_Y = self._adjust_seq_len(train_df_Y)
+        valid_df_Y = self._adjust_seq_len(valid_df_Y)
+        test_df_Y = self._adjust_seq_len(test_df_Y)
 
         return pd.concat([df, train_df_X, train_df_Y], axis=1),\
             pd.concat([df, valid_df_X, valid_df_Y], axis=1),\

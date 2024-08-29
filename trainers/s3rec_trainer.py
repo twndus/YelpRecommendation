@@ -234,11 +234,11 @@ class S3RecTrainer(BaseTrainer):
         self.model.train()
         train_loss = 0
         for data in tqdm(train_dataloader):
-            X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            pos_pred, neg_pred = self.model.finetune(X, pos_item, neg_item)
+            X, pos_items, neg_items = data['X'].to(self.device), data['pos_items'].to(self.device), data['neg_items'].to(self.device)
+            pos_preds, neg_preds = self.model.finetune(X, pos_items, neg_items)
 
             self.optimizer.zero_grad()
-            loss = self.loss(pos_pred, neg_pred)
+            loss = self.loss(pos_preds, neg_preds) # batch*max_length, 1
             loss.backward()
             self.optimizer.step()
 
@@ -251,11 +251,11 @@ class S3RecTrainer(BaseTrainer):
         valid_loss = 0
         # actual, predicted = [], []
         for data in tqdm(valid_dataloader):
-            X, pos_item, neg_item = data['X'].to(self.device), data['pos_item'].to(self.device), data['neg_item'].to(self.device)
-            pos_pred, neg_pred = self.model.finetune(X, pos_item, neg_item)
+            X, pos_items, neg_items = data['X'].to(self.device), data['pos_items'].to(self.device), data['neg_items'].to(self.device)
+            pos_preds, neg_preds = self.model.finetune(X, pos_items, neg_items)
 
             self.optimizer.zero_grad()
-            loss = self.loss(pos_pred, neg_pred)
+            loss = self.loss(pos_preds, neg_preds)
 
             valid_loss += loss.item()
 

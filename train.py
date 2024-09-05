@@ -18,10 +18,12 @@ from data.datasets.s3rec_data_pipeline import S3RecDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
 from data.datasets.dcn_dataset import DCNDataset
+from data.datasets.ngcf_dataset import NGCFDataset
 from data.datasets.s3rec_dataset import S3RecDataset
 from trainers.cdae_trainer import CDAETrainer
 from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
+from trainers.ngcf_trainer import NGCFTrainer
 from trainers.s3rec_trainer import S3RecTrainer, S3RecPreTrainer
 from utils import set_seed
 
@@ -94,7 +96,7 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
     elif cfg.model_name in ('NGCF', ):
-        trainer = MGCFTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
+        trainer = NGCFTrainer(cfg, args.model_info['num_items'], args.model_info['num_users'], 
                                 args.data_pipeline.laplacian_matrix)
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
         trainer.load_best_model()
@@ -169,8 +171,8 @@ def main(cfg: OmegaConf):
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     elif cfg.model_name == 'NGCF':
         train_data, valid_data, valid_eval_data, test_eval_data = data_pipeline.split(df)
-        train_dataset = MFDataset(train_data, num_items=data_pipeline.num_items)
-        valid_dataset = MFDataset(valid_data, num_items=data_pipeline.num_items)
+        train_dataset = NGCFDataset(train_data, num_items=data_pipeline.num_items)
+        valid_dataset = NGCFDataset(valid_data, num_items=data_pipeline.num_items)
         args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     elif cfg.model_name == 'S3Rec':

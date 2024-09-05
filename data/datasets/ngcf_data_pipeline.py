@@ -21,25 +21,26 @@ class NGCFDataPipeline(MFDataPipeline):
         # transform df to user-item interaction (R)
         logger.info('transform df to user-item interaction')
         user_item_interaction = df.pivot_table(index='user_id', columns=['business_id'], values=['rating'])
-        user_item_interaction = user_item_interaction.droplevel(0, 1)
+        user_item_interaction = user_item_interaction.droplevel(0, 1).fillna(0)
 
         # adjacency matrix
         logger.info('create adjacency matrix')
-        adjacency_matrix = np.zeros((self.num_items+self.num_users, self.num_items+self.num_users))
+        adjacency_matrix = np.zeros((self.num_items+self.num_users, self.num_items+self.num_users), dtype=np.float32)
         adjacency_matrix[:self.num_users,self.num_users:] = user_item_interaction
         adjacency_matrix[self.num_users:,:self.num_users] = user_item_interaction.T
 
         # diagonal degree matrix (n+m) x (m+n)
         logger.info('create diagonal degree matrix')
-        diagonal_degree_matrix = np.diag(1/np.sqrt(adjacency_matrix.sum(axis=0)))
+        diagonal_degree_matrix = np.diag(1/np.sqrt(adjacency_matrix.sum(axis=0))).astype(np.float32)
 
         # set laplacian matrix
         logger.info('set laplacian matrix')
-        diagonal_degree_matrix = torch.tensor(diagonal_degree_matrix).float().to('cuda')
-        adjacency_matrix = torch.tensor(adjacency_matrix).float().to('cuda')
-        self.laplacian_matrix = torch.matmul(diagonal_degree_matrix, adjacency_matrix)
-        adjacency_matrix = adjacency_matrix.cpu().detach()
-        self.laplacian_matrix = torch.matmul(self.laplacian_matrix, diagonal_degree_matrix)
+        diagonal_degree_matrix = torch.from_numpy(diagonal_degree_matrix).to_sparse().to('cuda')
+        adjacency_matrix = torch.from_numpy(adjacency_matrix).to_sparse().to('cuda')
+        self.laplacian_matrix = torch.sparse.mm(diagonal_degree_matrix, adjacency_matrix)
+        del adjacency_matrix
+        self.laplacian_matrix = torch.sparse.mm(self.laplacian_matrix, diagonal_degree_matrix)
+        del diagonal_degree_matrix 
         logger.info('done...')
 
     def preprocess(self) -> pd.DataFrame:

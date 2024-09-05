@@ -24,13 +24,18 @@ Our goal is to provide a robust analysis of these models and evaluate their perf
 
 ## Development Environment
 To run this project, you will need:
-- **Python 3.8+**: Ensure Python version is up to date for compatibility.
+- **Python 3.11+**: Ensure Python version is up to date for compatibility.
 - **Jupyter Notebook**: For interactive data analysis and visualizations.
 - **Required Libraries**: pandas, numpy, scikit-learn, tensorflow/pytorch (depending on model choice).
 - **Operating System**: Compatible with Windows, macOS, and Linux.
 
 ## Technology Stack
-스택 나열
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white)
+![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=for-the-badge&logo=pandas&logoColor=white)
+![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=for-the-badge&logo=numpy&logoColor=white)
+![Vim](https://img.shields.io/badge/VIM-%2311AB00.svg?style=for-the-badge&logo=vim&logoColor=white)
+![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 
 ## Model Performance Comparison
 

@@ -8,14 +8,14 @@ log_dir:    logs/
 sweep:      False
 
 # wandb config
-wandb:      False # True/ False
+wandb:      False
 project:    YelpRecommendation
 notes:      "..."
-tags:       [sweep, yelp, cdae, hyper-parameter, model-structure]
+tags:       [yelp, s3rec]
 
 # train config
-device:     cuda # cpu
-epochs:     100
+device:     cpu 
+epochs:     5 
 batch_size: 32
 lr:         0.0001
 optimizer:  adam # adamw
@@ -26,7 +26,7 @@ weight_decay: 0 #1e-5
 best_metric: loss # loss, precision, recall, map, ndcg
 
 # model config
-model_name: NGCF 
+model_name: S3Rec 
 model:
   CDAE:
     negative_sampling: True # False
@@ -43,4 +43,14 @@ model:
     embed_size: 64
   NGCF:
     embed_size: 64
-    num_orders: 1
+    num_orders: 2
+  S3Rec:
+    embed_size: 64
+    max_seq_len: 50
+    num_heads: 2
+    num_blocks: 2
+    pretrain: False # False
+    load_pretrain: True
+    pretrain_epochs: 100 # 100
+    mask_portion: 0.2
+    dropout_ratio: 0.1

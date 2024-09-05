@@ -1,5 +1,6 @@
 import os, json
 
+import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import OrdinalEncoder
@@ -35,15 +36,16 @@ class YelpPreprocessPipe:
         review_df = review_df.sort_values(['date'])
         # logger.info(f"after order by: {review_df[review_df.user_id == review_df.iloc[0].user_id].head()}")
         review_df = review_df[['user_id', 'business_id', 'stars']].rename(columns={'stars':'rating'})
-        self._save_interactions(review_df)
-
-#        user_df = self._read_yelp_json('user')
-#        users2attributes = self._create_users2attributes(user_df, review_df)
-#        self._save_entities2attributes(users2attributes, 'user')
 
         item_df = self._read_yelp_json('business')
         items2attributes = self._create_items2attributes(item_df, review_df)
         self._save_entities2attributes(items2attributes, 'item')
+
+        behaviors, behaviors_df = self._agg_behaviors(review_df)
+        self._save_behaviors(behaviors)
+
+        samples = self._negative_sampling(behaviors_df)
+        self._save_samples(samples)
 
     def _read_yelp_json(self, datatype, query: str=None):
         logger.info(f"load {datatype} raw data ...")
@@ -82,10 +84,10 @@ class YelpPreprocessPipe:
     def _id_mapping(self, df):
         logger.info(f"map user_id and business_id to new numeric ids...")
 
-        self.user2id = {user_id: id_ for id_, user_id in enumerate(df['user_id'].unique())}
+        self.user2id = {user_id: id_ for id_, user_id in enumerate(df['user_id'].unique(), 1)}
         self.id2user = {id_: user_id for user_id, id_ in self.user2id.items()}
 
-        self.item2id = {item_id: id_ for id_, item_id in enumerate(df['business_id'].unique())}
+        self.item2id = {item_id: id_ for id_, item_id in enumerate(df['business_id'].unique(), 1)}
         self.id2item = {id_: item_id for item_id, id_ in self.item2id.items()}
 
         df['user_id'] = df['user_id'].map(self.user2id)
@@ -113,31 +115,19 @@ class YelpPreprocessPipe:
 
         # categories 810
         categories = item_df.categories.str.split(', ').explode().unique()
-        categories2id = {category: id_ for id_, category in enumerate(categories)}
+        categories2id = {category: id_ for id_, category in enumerate(categories, 1)}
         id2categories = {id_:category for category, id_ in categories2id.items()}
-
-        # statecity 462
-        item_df['statecity'] = item_df.state + '_' + item_df.city
-        statecities = item_df.statecity.unique()
-        statecities2id = {statecity: id_ for id_, statecity in enumerate(statecities)}
-        id2statecities = {id_:statecity for statecity, id_ in statecities2id.items()}
 
         # encoding
         item_df['category_encoded'] = item_df.categories.str.split(', ').apply(lambda x: [categories2id[y] for y in x])
-        item_df['statecity_encoded'] = item_df.statecity.apply(lambda x: statecities2id[x])
 
         items2attributes = {
-            int(row['business_id']): {'categories': row['category_encoded'], 'statecity': row['statecity_encoded']}\
+            int(row['business_id']): row['category_encoded']\
             for i, row in item_df.iterrows()
         }
 
         logger.info(f"done...")
         return items2attributes
-
-    def _save_interactions(self, interactions):
-        logger.info(f"save interactions...")
-        interactions.to_csv(os.path.join(self.cfg.result_dir, 'yelp_interactions.tsv'), index=False, sep='\t')
-        logger.info(f"done...")
 
     def _save_entities2attributes(self, entities2attributes, entity_name):
         logger.info(f"save {entity_name}2attributes...")
@@ -147,6 +137,49 @@ class YelpPreprocessPipe:
             json.dump(entities2attributes, f)
         
         logger.info(f"done...")
+
+    def _save_samples(self, samples: list):
+        logger.info(f"save samples...")
+        with open(os.path.join(self.cfg.result_dir, 'yelp_samples.txt'), 'w') as f:
+            for line in samples:
+                f.write(' '.join(line) + '\n')
+        logger.info(f"done...")
+
+    def _save_behaviors(self, behaviors):
+        logger.info(f"save behaviors...")
+        with open(os.path.join(self.cfg.result_dir, 'yelp.txt'), 'w') as f:
+            for line in behaviors:
+                f.write(' '.join(line) + '\n')
+        logger.info(f"done...")
+
+    def _agg_behaviors(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info(f"aggregate user behaviors...")
+        # group by user_id
+        df.business_id = df.business_id.astype('str')
+        df = df.groupby(['user_id']).agg({'business_id': [('behaviors', list)]}).droplevel(0, 1)
+
+        behaviors = []
+        for user, row in df.iterrows(): 
+            behaviors.append([str(user), *row['behaviors']])
+
+        return behaviors, df
+
+    def _negative_sampling(self, behavior_df: pd.DataFrame) -> pd.DataFrame:
+        logger.info(f"negative sampling...")
+        
+        samples = []
+        sample_size = 99
+        num_items = len(self.item2id)
+        for user, behaviors in behavior_df.iterrows(): 
+            neg_items = []
+            for _ in range(sample_size):
+                neg_item = np.random.randint(0, num_items)
+                while (neg_item in behaviors) or (neg_item in neg_items):
+                    neg_item = np.random.randint(0, num_items)
+                neg_items.append(str(neg_item))
+            samples.append([str(user), *neg_items])
+        return samples
+
 
 @hydra.main(version_base=None, config_path="../configs", config_name="data_preprocess")
 def main(cfg: OmegaConf):

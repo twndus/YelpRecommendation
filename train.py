@@ -11,17 +11,20 @@ from torch.utils.data import DataLoader
 from loguru import logger
 
 from data.datasets.cdae_data_pipeline import CDAEDataPipeline
-from data.datasets.dcn_dataset import DCNDataset
 from data.datasets.mf_data_pipeline import MFDataPipeline
 from data.datasets.dcn_data_pipeline import DCNDatapipeline
 from data.datasets.ngcf_data_pipeline import NGCFDataPipeline
+from data.datasets.s3rec_data_pipeline import S3RecDataPipeline
 from data.datasets.cdae_dataset import CDAEDataset
 from data.datasets.mf_dataset import MFDataset
+from data.datasets.dcn_dataset import DCNDataset
 from data.datasets.ngcf_dataset import NGCFDataset
+from data.datasets.s3rec_dataset import S3RecDataset
 from trainers.cdae_trainer import CDAETrainer
 from trainers.dcn_trainer import DCNTrainer
 from trainers.mf_trainer import MFTrainer
 from trainers.ngcf_trainer import NGCFTrainer
+from trainers.s3rec_trainer import S3RecTrainer, S3RecPreTrainer
 from utils import set_seed
 
 
@@ -98,6 +101,18 @@ def train(cfg, args):#train_dataset, valid_dataset, test_dataset, model_info):
         trainer.run(train_dataloader, valid_dataloader, args.valid_eval_data)
         trainer.load_best_model()
         trainer.evaluate(args.test_eval_data, 'test')
+    elif cfg.model_name in ('S3Rec',):
+        if cfg.pretrain:
+            pretrainer = S3RecPreTrainer(cfg, args.model_info['num_items'], 
+                                args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+            pretrainer.pretrain(train_dataloader)
+            pretrainer.load_best_model()
+    
+        trainer = S3RecTrainer(cfg, args.model_info['num_items'], 
+                            args.data_pipeline.item2attributes, args.data_pipeline.attributes_count)
+        trainer.run(train_dataloader, valid_dataloader)
+        trainer.load_best_model()
+        trainer.evaluate(test_dataloader)
 
 def unpack_model(cfg: OmegaConf) -> OmegaConf:
     if cfg.model_name not in cfg.model:
@@ -124,6 +139,8 @@ def main(cfg: OmegaConf):
         data_pipeline = DCNDatapipeline(cfg)
     elif cfg.model_name == 'NGCF':
         data_pipeline = NGCFDataPipeline(cfg)
+    elif cfg.model_name == 'S3Rec':
+        data_pipeline = S3RecDataPipeline(cfg)
     else:
         raise ValueError()
 
@@ -157,6 +174,13 @@ def main(cfg: OmegaConf):
         train_dataset = NGCFDataset(train_data, num_items=data_pipeline.num_items)
         valid_dataset = NGCFDataset(valid_data, num_items=data_pipeline.num_items)
         args.update({'valid_eval_data': valid_eval_data, 'test_eval_data': test_eval_data})
+        model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
+    elif cfg.model_name == 'S3Rec':
+        train_data, valid_data, test_data = data_pipeline.split(df)
+        train_dataset = S3RecDataset(train_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        valid_dataset = S3RecDataset(valid_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items)
+        test_dataset = S3RecDataset(test_data, data_pipeline.item2attributes, data_pipeline.attributes_count, num_items=data_pipeline.num_items, train=False)
+        args.update({'test_dataset': test_dataset})
         model_info['num_items'], model_info['num_users']  = data_pipeline.num_items, data_pipeline.num_users
     else:
         raise ValueError()

@@ -41,13 +41,13 @@ To run this project, you will need:
 
 The following table shows the performance of different models used in the project. Each model was evaluated based on multiple metrics:
 
-| Model                   | MAP@10 | Precision@10 | Recall@10 | NDCG@10 |
-|-------------------------|----------|-----------|--------|----------|
-| CDAE                    | 82.5%    | 80.3%     | 84.1%  | 82.1%    |
-| DCN                     | 85.0%    | 83.7%     | 86.4%  | 85.0%    |
-| NGCF                    | 87.5%    | 85.8%     | 89.2%  | 87.4%    |
-| S3Rec                   | 90.2%    | 88.9%     | 91.5%  | 90.2%    |
-| Multi-armed bandit      | 90.2%    | 88.9%     | 91.5%  | 90.2%    |
+| Model                   | MAP@10 | Precision@10 | Recall@10 | NDCG@10 | HIT@10 | MRR |
+|-------------------------|----------|-----------|--------|----------|---------|-------|
+| CDAE                    | 0.02222    | 0.01538     | 0.0713  | 0.02198    | - | - |
+| DCN                     | 0.0004    | 0.0004     | 0.0016  | 0.0005    | - | - |
+| NGCF                    | 0.0002    | 0.0001     | 0.0006  | 0.0002    | - | - |
+| S3Rec                   | -    |   -   | -  | 0.1743  | 0.3134 | 0.1537 |
+| Multi-armed bandit      | -    | -     | -  | -   | - | - |
 
 These results were obtained from the Yelp 2018 dataset under controlled test conditions.
 

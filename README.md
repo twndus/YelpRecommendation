@@ -20,6 +20,55 @@ Our goal is to provide a robust analysis of these models and evaluate their perf
 ## Project Structure
 ```
 .
+├── README.md
+├── __init__.py
+├── configs
+│   ├── cdae_sweep_config.yaml
+│   ├── data_preprocess.yaml
+│   ├── mf_sweep_config.yaml
+│   ├── sweep_config.yaml
+│   └── train_config.yaml
+├── data
+│   ├── __init__.py
+│   ├── data_preprocess.py
+│   ├── datasets
+│   │   ├── __init__.py
+│   │   ├── cdae_data_pipeline.py
+│   │   ├── cdae_dataset.py
+│   │   ├── data_pipeline.py
+│   │   ├── dcn_data_pipeline.py
+│   │   ├── dcn_dataset.py
+│   │   ├── mf_data_pipeline.py
+│   │   ├── mf_dataset.py
+│   │   ├── ngcf_data_pipeline.py
+│   │   ├── ngcf_dataset.py
+│   │   ├── poprec_data_pipeline.py
+│   │   ├── poprec_dataset.py
+│   │   ├── s3rec_data_pipeline.py
+│   │   └── s3rec_dataset.py
+├── loss.py
+├── metric.py
+├── models
+│   ├── base_model.py
+│   ├── cdae.py
+│   ├── dcn.py
+│   ├── mf.py
+│   ├── ngcf.py
+│   ├── s3rec.py
+│   └── wdn.py
+├── poetry.lock
+├── pyproject.toml
+├── train.py
+├── trainers
+│   ├── __init__.py
+│   ├── base_trainer.py
+│   ├── cdae_trainer.py
+│   ├── dcn_trainer.py
+│   ├── mf_trainer.py
+│   ├── ngcf_trainer.py
+│   ├── poprec_trainer.py
+│   └── s3rec_trainer.py
+└── utils.py
 ```
 
 ## Development Environment
@@ -74,3 +123,21 @@ $ python train.py
 ```
 
 ## Contributors
+<table align="center">
+  <tr height="205px">
+    <td align="center" width="200px">
+      <a href="https://github.com/twndus"><img src="https://github.com/twndus.png" width="150px;" alt=""/></a>
+    </td>
+    <td align="center" width="200px">
+      <a href="https://github.com/GangBean"><img src="https://github.com/GangBean.png" width="150px;" alt=""/></a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="200px">
+      <a href="https://github.com/twndus">이주연</a>
+    </td>
+    <td align="center" width="200px">
+      <a href="https://github.com/GangBean">조성홍</a>
+    </td>
+  </tr>
+</table>

@@ -12,8 +12,13 @@ This project focuses on matching benchmark performance in recommendation systems
 - **Collaborative Filtering**: Predicts user preferences based on user-item interactions.
   - **[Collaborative Denoising Auto-Encoders (2016)](https://alicezheng.org/papers/wsdm16-cdae.pdf)** applies Denoising Auto-Encoders (DAE) to top-N recommendation systems, generalizing various collaborative filtering (CF) models. Unlike AutoRec from 2015, CDAE incorporates a user node and uses corrupted input preferences.
 - **Matrix Factorization**: Reduces the dimensionality of the interaction matrix to uncover latent features.
+  - **[BPR: Bayesian Personalized Ranking from Implicit Feedback (2009)](https://arxiv.org/pdf/1205.2618)**: applies a pairwise ranking loss to leverage the performance of recommendation models, optimizing the training loss in a way that improves evaluation metrics like AUC.
 - **Deep Neural Networks**: Leverages deep learning to enhance prediction accuracy using complex feature interactions.
-- **Hybrid Models**: Integrates several models to capitalize on their individual strengths for superior performance.
+  - **[Deep & Cross Network for Ad Click Predictions (2017)](https://arxiv.org/pdf/1708.05123)**: incorporates explicit features crossing into a deep learning-based collaborative filtering model, efficiently capturing high-order interactions between signals.
+- **Sequential Models**: Predicts users' next item choice based on their past behaviors
+  - **[S3-Rec: Self-Supervised Learning for Sequential Recommendation with Mutual Information Maximization (2020)](https://arxiv.org/pdf/2008.07873)**: is a self-attention-based sequential recommendation model, pretrained by four distinct self-supervised objectives, leveraging Mutual Information Maximalzation.
+- **Graph-Convolution Models**: capture high-order interactions between users and items, enabling efficient batch-level computation
+  - **[Neural Graph Collaborative Filtering (2020)](https://arxiv.org/pdf/1905.08108)**: applies graph convolution to recommendation systems, incorporating high-order connectivity in an explicit manner compared to existing collaborative filtering methods.
 
 Our goal is to provide a robust analysis of these models and evaluate their performance comprehensively.
 

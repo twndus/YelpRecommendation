@@ -139,7 +139,7 @@ $ python train.py
   </tr>
   <tr>
     <td align="center" width="200px">
-      <a href="https://github.com/twndus">이주연</a>
+      <a href="https://github.com/twndus">Judy</a>
     </td>
     <td align="center" width="200px">
       <a href="https://github.com/GangBean">조성홍</a>
